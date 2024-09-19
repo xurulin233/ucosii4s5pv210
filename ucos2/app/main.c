@@ -6,6 +6,10 @@ int main(void)
 	led4();
 	uart_init();
 	printf("main init\n");
+	
+	system_initexception();					
+	timer_init();
+
 	led_blink();
 
 }

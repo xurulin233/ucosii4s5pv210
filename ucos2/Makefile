@@ -21,8 +21,8 @@ SOURCE := \
 		app/main.c \
 		app/led.c \
 		app/uart.c \
-		app/int.c \
-		app/clock.c
+		app/exception.c \
+		app/timer.c
 
 objs := \
 	$(patsubst %.c, %.o, $(filter %.c, $(SOURCE))) \
