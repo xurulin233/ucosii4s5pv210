@@ -56,7 +56,8 @@ void MainTask(void *pdata)
     while(1)
     {
 	    printf("Enter Maintask\r\n");	
-        OSTimeDly(OS_TICKS_PER_SEC);
+		OSTaskSuspend(MainTaskPrio);
+        //OSTimeDly(OS_TICKS_PER_SEC);
     }
 }
 
@@ -64,8 +65,9 @@ void Task0(void *pdata)
 {		
 	while (1)
 	{
-	    printf("Enter Task1\r\n");   	
-	    OSTimeDly(OS_TICKS_PER_SEC/5);
+	    printf("Enter Task1\r\n"); 
+		OSTaskSuspend(Task0Prio);
+	    //OSTimeDly(OS_TICKS_PER_SEC/5);
 	}
 }
 
@@ -76,6 +78,8 @@ void Task1(void *pdata)
 	while (1)
 	{
 	    printf("Enter Task2\r\n");	
+		OSTaskResume(Task0Prio); 
+		 printf("OSTaskResume Task1 end\r\n"); 
 	    OSTimeDly(OS_TICKS_PER_SEC/5);
 	}
 }
