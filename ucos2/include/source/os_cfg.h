@@ -47,7 +47,7 @@
 #define OS_MAX_TASKS             20    /* Max. number of tasks in your application, MUST be >= 2  		 */
 #define OS_SCHED_LOCK_EN          1    /*     Include code for OSSchedLock() and OSSchedUnlock()         */
 // 是否创建统计任务TaskStat				  
-#define OS_TASK_STAT_EN           0    /* Enable (1) or Disable(0) the statistics task  				 */
+#define OS_TASK_STAT_EN           1    /* Enable (1) or Disable(0) the statistics task  				 */
 #define OS_TASK_STAT_STK_CHK_EN   1    /* Check task stacks from statistic task                          */
 
 #define OS_TICK_STEP_EN           0    /* Enable tick stepping feature for uC/OS-View                    */

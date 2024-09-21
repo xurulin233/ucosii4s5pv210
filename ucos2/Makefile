@@ -9,6 +9,8 @@ LINKERSCRIPT := map.lds
 
 CFLAGS 		:= -Wall -O2 -fno-builtin
 CPPFLAGS   	:= -nostdinc $(INCLUDEDIR)
+LDFLAGS:= -lgcc -L $(ECOS_PRODUCT_DIR)/toolschain/4.5.1/lib/gcc/arm-none-linux-gnueabi/4.5.1
+
 
 
 export 	CC AR LD OBJCOPY OBJDUMP INCLUDEDIR CFLAGS CPPFLAGS #这是为了 给 make lib/libc.a 外部输出的 这里不用
@@ -36,8 +38,7 @@ all:$(EXECUTABLE)
 	${OBJDUMP} -D UCOS210.elf >$(patsubst %.elf,%.dis,$(EXECUTABLE))
 
 $(EXECUTABLE): $(objs)
-	${LD} -T$(LINKERSCRIPT) -o $(EXECUTABLE) $^
-
+	${LD} -T$(LINKERSCRIPT) -o $(EXECUTABLE) $^ $(LDFLAGS)
 .PHONY : lib/libc.a
 lib/libc.a:
 	cd lib; make; cd ..

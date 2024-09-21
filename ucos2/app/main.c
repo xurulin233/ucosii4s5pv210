@@ -48,7 +48,7 @@ void MainTask(void *pdata)
 		
     // 初始化统计任务。
     // 如果要使用统计任务，则在用户的第一个任务里需调用OSStatInit函数
-    //OSStatInit();																				
+    OSStatInit();																				
     // 创建用户应用程序任务
     OSTaskCreate(Task0,(void *)0, &Task0Stk[Task0StkLengh - 1], Task0Prio);			
     OSTaskCreate(Task1,(void *)0, &Task1Stk[Task1StkLengh - 1], Task1Prio);
@@ -77,10 +77,18 @@ void Task1(void *pdata)
 {		
 	while (1)
 	{
-	    printf("Enter Task2\r\n");	
-		OSTaskResume(Task0Prio); 
-		 printf("OSTaskResume Task1 end\r\n"); 
-	    OSTimeDly(OS_TICKS_PER_SEC/5);
+	    //printf("Enter Task2\r\n");	
+		//OSTaskResume(Task0Prio); 
+		//printf("OSTaskResume Task1 end\r\n");
+	    //OSTimeDly(OS_TICKS_PER_SEC/5);
+	    printf("OSCPUUsage = %d % \r\n",OSCPUUsage);
+	    OSTimeDly(OS_TICKS_PER_SEC/200);
 	}
+}
+
+
+int raise(int param)
+{
+    return 0;
 }
 
