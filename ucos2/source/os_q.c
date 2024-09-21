@@ -48,7 +48,7 @@
 *              'err' has been added to the API to tell you about the outcome of the call.
 *********************************************************************************************************
 */
-
+// 无等待地从一个消息队列中取得消息
 #if OS_Q_ACCEPT_EN > 0
 void  *OSQAccept (OS_EVENT *pevent, INT8U *err)
 {
@@ -58,35 +58,49 @@ void  *OSQAccept (OS_EVENT *pevent, INT8U *err)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (err == (INT8U *)0) {                     /* Validate 'err'                                     */
+    if (err == (INT8U *)0)						 /* Validate 'err'                                     */
+    {                     
         return ((void *)0);
     }
-    if (pevent == (OS_EVENT *)0) {               /* Validate 'pevent'                                  */
+    if (pevent == (OS_EVENT *)0)				 /* Validate 'pevent'                                  */
+    {               
         *err = OS_ERR_PEVENT_NULL;
         return ((void *)0);
     }
 #endif
-    if (pevent->OSEventType != OS_EVENT_TYPE_Q) {/* Validate event block type                          */
+	// 事件类型是消息队列?
+    if (pevent->OSEventType != OS_EVENT_TYPE_Q) /* Validate event block type                          */
+    {
         *err = OS_ERR_EVENT_TYPE;
         return ((void *)0);
     }
+    
     OS_ENTER_CRITICAL();
+	// 获得队列控制块
     pq = (OS_Q *)pevent->OSEventPtr;             /* Point at queue control block                       */
-    if (pq->OSQEntries > 0) {                    /* See if any messages in the queue                   */
+	// 消息数不为0?
+    if (pq->OSQEntries > 0) 					 /* See if any messages in the queue                   */
+    { 
+    	// 取出消息，更新OSQOut
         msg = *pq->OSQOut++;                     /* Yes, extract oldest message from the queue         */
+		// 消息个数减一
         pq->OSQEntries--;                        /* Update the number of entries in the queue          */
-        if (pq->OSQOut == pq->OSQEnd) {          /* Wrap OUT pointer if we are at the end of the queue */
+		// 消息被取完了?
+        if (pq->OSQOut == pq->OSQEnd)			 /* Wrap OUT pointer if we are at the end of the queue */
+        {          
             pq->OSQOut = pq->OSQStart;
         }
         *err = OS_NO_ERR;
-    } else {
+    }
+    // 消息个数为0，则:
+    else 
+    {
         *err = OS_Q_EMPTY;
         msg  = (void *)0;                        /* Queue is empty                                     */
     }
     OS_EXIT_CRITICAL();
+	// 返回消息或空
     return (msg);                                /* Return message received (or NULL)                  */
 }
 #endif
@@ -109,7 +123,7 @@ void  *OSQAccept (OS_EVENT *pevent, INT8U *err)
 *              == (OS_EVENT *)0  if no event control blocks were available or an error was detected
 *********************************************************************************************************
 */
-
+// 创建一个消息队列
 OS_EVENT  *OSQCreate (void **start, INT16U size)
 {
     OS_EVENT  *pevent;
@@ -118,38 +132,60 @@ OS_EVENT  *OSQCreate (void **start, INT16U size)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
-    if (OSIntNesting > 0) {                      /* See if called from ISR ...                         */
+    if (OSIntNesting > 0) 						 /* See if called from ISR ...                         */
+    {                      
         return ((OS_EVENT *)0);                  /* ... can't CREATE from an ISR                       */
     }
+
     OS_ENTER_CRITICAL();
+    // 获得事件控制块
     pevent = OSEventFreeList;                    /* Get next free event control block                  */
-    if (OSEventFreeList != (OS_EVENT *)0) {      /* See if pool of free ECB pool was empty             */
+    if (OSEventFreeList != (OS_EVENT *)0) 		 /* See if pool of free ECB pool was empty             */
+    {      
+    	// 更新OSEventFreeList
         OSEventFreeList = (OS_EVENT *)OSEventFreeList->OSEventPtr;
     }
     OS_EXIT_CRITICAL();
-    if (pevent != (OS_EVENT *)0) {               /* See if we have an event control block              */
+
+    if (pevent != (OS_EVENT *)0) 				 /* See if we have an event control block              */
+    {               
         OS_ENTER_CRITICAL();
+        // 获得队列控制块
         pq = OSQFreeList;                        /* Get a free queue control block                     */
-        if (pq != (OS_Q *)0) {                   /* Were we able to get a queue control block ?        */
+        if (pq != (OS_Q *)0) 					 /* Were we able to get a queue control block ?        */
+        {         
+        	// 更新OSEventFreeList
             OSQFreeList            = OSQFreeList->OSQPtr; /* Yes, Adjust free list pointer to next free*/
             OS_EXIT_CRITICAL();
+			// 初始化队列控制块，包括:
+			// 队列头
             pq->OSQStart           = start;               /*      Initialize the queue                 */
+			// 队列尾
             pq->OSQEnd             = &start[size];
+			// 新消息插入的地方
             pq->OSQIn              = start;
+			// 下一个被取出的消息
             pq->OSQOut             = start;
+			// 队列长度
             pq->OSQSize            = size;
+			// 消息个数
             pq->OSQEntries         = 0;
+
+			// 初始化事件控制块，包括:
+			// 事件类型为消息队列
             pevent->OSEventType    = OS_EVENT_TYPE_Q;
+			// 计算器
             pevent->OSEventCnt     = 0;
             pevent->OSEventPtr     = pq;
 #if OS_EVENT_NAME_SIZE > 1
             pevent->OSEventName[0] = '?';                  /* Unknown name                             */
             pevent->OSEventName[1] = OS_ASCII_NUL;
 #endif
+			// 初始化一个空的等待任务列表
             OS_EventWaitListInit(pevent);                 /*      Initalize the wait list              */
-        } else {
+        } 
+        else 
+        {
             pevent->OSEventPtr = (void *)OSEventFreeList; /* No,  Return event control block on error  */
             OSEventFreeList    = pevent;
             OS_EXIT_CRITICAL();
@@ -260,7 +296,9 @@ OS_EVENT  *OSQDel (OS_EVENT *pevent, INT8U opt, INT8U *err)
              break;
 
         case OS_DEL_ALWAYS:                                /* Always delete the queue                  */
-             while (pevent->OSEventGrp != 0) {             /* Ready ALL tasks waiting for queue        */
+             while (pevent->OSEventGrp != 0)
+             {             /* Ready ALL tasks waiting for queue        */
+             	  // 从等待列表中找出使最高优先级任务（Highest Priority Task – HPT），并将其置于就绪态。
                  (void)OS_EventTaskRdy(pevent, (void *)0, OS_STAT_Q);
              }
 #if OS_EVENT_NAME_SIZE > 1
@@ -311,7 +349,7 @@ OS_EVENT  *OSQDel (OS_EVENT *pevent, INT8U opt, INT8U *err)
 *               by the queue entries should, most likely, need to be de-allocated (i.e. freed).
 *********************************************************************************************************
 */
-
+// 清空一个消息队列
 #if OS_Q_FLUSH_EN > 0
 INT8U  OSQFlush (OS_EVENT *pevent)
 {
@@ -320,18 +358,21 @@ INT8U  OSQFlush (OS_EVENT *pevent)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (pevent == (OS_EVENT *)0) {                    /* Validate 'pevent'                             */
+    if (pevent == (OS_EVENT *)0)					  /* Validate 'pevent'                             */
+    {                    
         return (OS_ERR_PEVENT_NULL);
     }
-    if (pevent->OSEventType != OS_EVENT_TYPE_Q) {     /* Validate event block type                     */
+    // 事件类型是消息队列?
+    if (pevent->OSEventType != OS_EVENT_TYPE_Q) 	  /* Validate event block type                     */
+    {     
         return (OS_ERR_EVENT_TYPE);
     }
 #endif
     OS_ENTER_CRITICAL();
+    // 获得队列控制块
     pq             = (OS_Q *)pevent->OSEventPtr;      /* Point to queue storage structure              */
+	// 清空队列
     pq->OSQIn      = pq->OSQStart;
     pq->OSQOut     = pq->OSQStart;
     pq->OSQEntries = 0;
@@ -375,7 +416,7 @@ INT8U  OSQFlush (OS_EVENT *pevent)
 * Note(s)    : As of V2.60, this function allows you to receive NULL pointer messages.
 *********************************************************************************************************
 */
-
+// 等待一个消息队列中的消息
 void  *OSQPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
 {
     void      *msg;
@@ -384,60 +425,92 @@ void  *OSQPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (err == (INT8U *)0) {                     /* Validate 'err'                                     */
+    if (err == (INT8U *)0)  					/* Validate 'err'                                     */
+    {                    
         return ((void *)0);
     }
-    if (pevent == (OS_EVENT *)0) {               /* Validate 'pevent'                                  */
+    if (pevent == (OS_EVENT *)0)				/* Validate 'pevent'                                  */
+    {               
         *err = OS_ERR_PEVENT_NULL;
         return ((void *)0);
     }
-    if (pevent->OSEventType != OS_EVENT_TYPE_Q) {/* Validate event block type                          */
+   	// 事件类型是消息队列?
+    if (pevent->OSEventType != OS_EVENT_TYPE_Q) /* Validate event block type                          */
+    {
         *err = OS_ERR_EVENT_TYPE;
         return ((void *)0);
     }
 #endif
-    if (OSIntNesting > 0) {                      /* See if called from ISR ...                         */
+	// 不允许在中断中挂起
+    if (OSIntNesting > 0) 						 /* See if called from ISR ...                         */
+    {                      
         *err = OS_ERR_PEND_ISR;                  /* ... can't PEND from an ISR                         */
         return ((void *)0);
     }
-    if (OSLockNesting > 0) {                     /* See if called with scheduler locked ...            */
+    // 锁定调度时不允许挂起 
+    if (OSLockNesting > 0) 						 /* See if called with scheduler locked ...            */
+    {                     
         *err = OS_ERR_PEND_LOCKED;               /* ... can't PEND when locked                         */
         return ((void *)0);
     }
+    
     OS_ENTER_CRITICAL();
+    // 获得队列控制块
     pq = (OS_Q *)pevent->OSEventPtr;             /* Point at queue control block                       */
-    if (pq->OSQEntries > 0) {                    /* See if any messages in the queue                   */
+	// 消息个数大于0?
+    if (pq->OSQEntries > 0) 					 /* See if any messages in the queue                   */
+    {                   
+    	// 取出消息，并且OSQOut指向下一条消息
         msg = *pq->OSQOut++;                     /* Yes, extract oldest message from the queue         */
+        // 消息数减一
         pq->OSQEntries--;                        /* Update the number of entries in the queue          */
-        if (pq->OSQOut == pq->OSQEnd) {          /* Wrap OUT pointer if we are at the end of the queue */
+        // 达到队列尾?
+        if (pq->OSQOut == pq->OSQEnd)			 /* Wrap OUT pointer if we are at the end of the queue */
+        {          
             pq->OSQOut = pq->OSQStart;
         }
         OS_EXIT_CRITICAL();
         *err = OS_NO_ERR;
+        // 返回消息
         return (msg);                            /* Return message received                            */
     }
+    // 如果获取不到消息:
+   	
+	// 更新任务状态标志
     OSTCBCur->OSTCBStat   |= OS_STAT_Q;          /* Task will have to pend for a message to be posted  */
+	// 延时等待最大时间未到
     OSTCBCur->OSTCBPendTO  = OS_FALSE;
+	// 设置延时等待最大时间
     OSTCBCur->OSTCBDly     = timeout;            /* Load timeout into TCB                              */
+	// 将任务添加到事件控制块的等待任务表
     OS_EventTaskWait(pevent);                    /* Suspend task until event or timeout occurs         */
     OS_EXIT_CRITICAL();
-    OS_Sched();                                  /* Find next highest priority task ready to run       */
+
+	// 找出优先级最高的任务并进行任务切换
+    OS_Sched();                                  /* Find next highest priority task ready         */
+
+    // 当消息队列有效或者等待时间到后，
+    // 并且调用 OSQPend()函数的任务再一次成为最高优先级任务,
+    // 就会回到这里继续执行
     OS_ENTER_CRITICAL();
-    if (OSTCBCur->OSTCBPendTO == OS_TRUE) {         /* Was task readied because of a timeout?             */
+    // 等待最大时间到了?
+    if (OSTCBCur->OSTCBPendTO == OS_TRUE) 		 /* Was task readied because of a timeout?             */
+    {         
+	    // 由于等待超时而将任务置为就绪态。
         OS_EventTO(pevent);                      /* Yes                                                */
         OS_EXIT_CRITICAL();
         *err = OS_TIMEOUT;                       /*     Indicate a timeout occured                     */
         return ((void *)0);                      /*     No message received                            */
     }
+    // 否则，获得消息
     msg                     = OSTCBCur->OSTCBMsg;/* No, Extract message from TCB (Put there by QPost)  */
     OSTCBCur->OSTCBMsg      = (void *)0;
     OSTCBCur->OSTCBStat     = OS_STAT_RDY;
     OSTCBCur->OSTCBEventPtr = (OS_EVENT *)0;     /*     No longer waiting for event                    */
     OS_EXIT_CRITICAL();
     *err                    = OS_NO_ERR;
+	// 返回消息
     return (msg);                                /*     Return message received                        */
 }
 /*$PAGE*/
@@ -459,7 +532,7 @@ void  *OSQPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
 * Note(s)    : As of V2.60, this function allows you to send NULL pointer messages.
 *********************************************************************************************************
 */
-
+// 向消息队列发送一个消息,先进先出的方式
 #if OS_Q_POST_EN > 0
 INT8U  OSQPost (OS_EVENT *pevent, void *msg)
 {
@@ -468,31 +541,45 @@ INT8U  OSQPost (OS_EVENT *pevent, void *msg)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (pevent == (OS_EVENT *)0) {                     /* Validate 'pevent'                            */
+    if (pevent == (OS_EVENT *)0) 					   /* Validate 'pevent'                            */
+    {                     
         return (OS_ERR_PEVENT_NULL);
     }
 #endif
-    if (pevent->OSEventType != OS_EVENT_TYPE_Q) {      /* Validate event block type                    */
+	// 事件类型是消息队列?
+    if (pevent->OSEventType != OS_EVENT_TYPE_Q)		  /* Validate event block type                    */
+    {      
         return (OS_ERR_EVENT_TYPE);
     }
     OS_ENTER_CRITICAL();
-    if (pevent->OSEventGrp != 0) {                     /* See if any task pending on queue             */
+    // 有任务在等待消息队列?
+    if (pevent->OSEventGrp != 0)					   /* See if any task pending on queue             */
+    {          
+    	// 从等待列表中找出使最高优先级任务（Highest Priority Task – HPT），并将其置于就绪态。
         (void)OS_EventTaskRdy(pevent, msg, OS_STAT_Q); /* Ready highest priority task waiting on event */
         OS_EXIT_CRITICAL();
+		// 找出优先级最高的任务并进行任务切换
         OS_Sched();                                    /* Find highest priority task ready to run      */
         return (OS_NO_ERR);
     }
+    // 没有任务在等待消息队列，则
+    // 获得队列控制块
     pq = (OS_Q *)pevent->OSEventPtr;                   /* Point to queue control block                 */
-    if (pq->OSQEntries >= pq->OSQSize) {               /* Make sure queue is not full                  */
+    // 消息个数满了?
+    if (pq->OSQEntries >= pq->OSQSize) 				   /* Make sure queue is not full                  */
+    {               
         OS_EXIT_CRITICAL();
         return (OS_Q_FULL);
     }
+    // 消息个数没满，则
+    // 将消息插入到队列中
     *pq->OSQIn++ = msg;                                /* Insert message into queue                    */
+    // 消息数加一
     pq->OSQEntries++;                                  /* Update the nbr of entries in the queue       */
-    if (pq->OSQIn == pq->OSQEnd) {                     /* Wrap IN ptr if we are at end of queue        */
+    // 到了队列尾?
+    if (pq->OSQIn == pq->OSQEnd) 					   /* Wrap IN ptr if we are at end of queue        */
+    {                     
         pq->OSQIn = pq->OSQStart;
     }
     OS_EXIT_CRITICAL();
@@ -520,7 +607,7 @@ INT8U  OSQPost (OS_EVENT *pevent, void *msg)
 * Note(s)    : As of V2.60, this function allows you to send NULL pointer messages.
 *********************************************************************************************************
 */
-
+// 向消息队列发送一个消息，后进先出的方式
 #if OS_Q_POST_FRONT_EN > 0
 INT8U  OSQPostFront (OS_EVENT *pevent, void *msg)
 {
@@ -529,33 +616,47 @@ INT8U  OSQPostFront (OS_EVENT *pevent, void *msg)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (pevent == (OS_EVENT *)0) {                    /* Validate 'pevent'                             */
+    if (pevent == (OS_EVENT *)0)					  /* Validate 'pevent'                             */
+    {                    
         return (OS_ERR_PEVENT_NULL);
     }
 #endif
-    if (pevent->OSEventType != OS_EVENT_TYPE_Q) {     /* Validate event block type                     */
+	// 事件类型是消息队列?
+    if (pevent->OSEventType != OS_EVENT_TYPE_Q) 	  /* Validate event block type                     */
+    {    
         return (OS_ERR_EVENT_TYPE);
     }
     OS_ENTER_CRITICAL();
-    if (pevent->OSEventGrp != 0) {                    /* See if any task pending on queue              */
+    // 有任务在等待消息队列?
+    if (pevent->OSEventGrp != 0)					  /* See if any task pending on queue              */
+    {                    
+    	// 从等待列表中找出使最高优先级任务（Highest Priority Task – HPT），并将其置于就绪态。/
         (void)OS_EventTaskRdy(pevent, msg, OS_STAT_Q);/* Ready highest priority task waiting on event  */
         OS_EXIT_CRITICAL();
+		// 找出优先级最高的任务并进行任务切换
         OS_Sched();                                   /* Find highest priority task ready to run       */
         return (OS_NO_ERR);
     }
+    // 没有任务在等待消息队列,则
+    // 获得队列控制块
     pq = (OS_Q *)pevent->OSEventPtr;                  /* Point to queue control block                  */
-    if (pq->OSQEntries >= pq->OSQSize) {              /* Make sure queue is not full                   */
+	// 队列满了?
+    if (pq->OSQEntries >= pq->OSQSize) 				  /* Make sure queue is not full                   */
+    {              
         OS_EXIT_CRITICAL();
         return (OS_Q_FULL);
     }
-    if (pq->OSQOut == pq->OSQStart) {                 /* Wrap OUT ptr if we are at the 1st queue entry */
+    // 消息个数没满，则
+    // 我们是第一个消息?
+    if (pq->OSQOut == pq->OSQStart) 				  /* Wrap OUT ptr if we are at the 1st queue entry */
+    {                 
         pq->OSQOut = pq->OSQEnd;
     }
     pq->OSQOut--;
+    // 插入消息到队列的最后面
     *pq->OSQOut = msg;                                /* Insert message into queue                     */
+    // 消息数加一
     pq->OSQEntries++;                                 /* Update the nbr of entries in the queue        */
     OS_EXIT_CRITICAL();
     return (OS_NO_ERR);
@@ -626,9 +727,11 @@ INT8U  OSQPostOpt (OS_EVENT *pevent, void *msg, INT8U opt)
     if (pevent->OSEventGrp != 0x00) {                 /* See if any task pending on queue              */
         if ((opt & OS_POST_OPT_BROADCAST) != 0x00) {  /* Do we need to post msg to ALL waiting tasks ? */
             while (pevent->OSEventGrp != 0) {         /* Yes, Post to ALL tasks waiting on queue       */
+				// 从等待列表中找出使最高优先级任务（Highest Priority Task – HPT），并将其置于就绪态。
                 (void)OS_EventTaskRdy(pevent, msg, OS_STAT_Q);
             }
         } else {
+        	// 从等待列表中找出使最高优先级任务（Highest Priority Task – HPT），并将其置于就绪态。
             (void)OS_EventTaskRdy(pevent, msg, OS_STAT_Q);  /* No,  Post to HPT waiting on queue       */
         }
         OS_EXIT_CRITICAL();
@@ -677,7 +780,7 @@ INT8U  OSQPostOpt (OS_EVENT *pevent, void *msg, INT8U opt)
 *              OS_ERR_PDATA_NULL   If 'p_q_data' is a NULL pointer
 *********************************************************************************************************
 */
-
+// 查询一个消息队列的状态
 #if OS_Q_QUERY_EN > 0
 INT8U  OSQQuery (OS_EVENT *pevent, OS_Q_DATA *p_q_data)
 {
@@ -694,33 +797,47 @@ INT8U  OSQQuery (OS_EVENT *pevent, OS_Q_DATA *p_q_data)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (pevent == (OS_EVENT *)0) {                     /* Validate 'pevent'                            */
+    if (pevent == (OS_EVENT *)0) 					   /* Validate 'pevent'                            */
+    {                     
         return (OS_ERR_PEVENT_NULL);
     }
-    if (p_q_data == (OS_Q_DATA *)0) {                  /* Validate 'p_q_data'                          */
+    if (p_q_data == (OS_Q_DATA *)0) 				   /* Validate 'p_q_data'                          */
+    {                  
         return (OS_ERR_PDATA_NULL);
     }
 #endif
-    if (pevent->OSEventType != OS_EVENT_TYPE_Q) {      /* Validate event block type                    */
+	// 事件类型是消息队列?
+    if (pevent->OSEventType != OS_EVENT_TYPE_Q) 	   /* Validate event block type                    */
+    {      
         return (OS_ERR_EVENT_TYPE);
     }
+    
     OS_ENTER_CRITICAL();
+    // 获得邮箱的状态,包括:
+    // 等待任务表	
     p_q_data->OSEventGrp = pevent->OSEventGrp;         /* Copy message queue wait list                 */
     psrc                 = &pevent->OSEventTbl[0];
     pdest                = &p_q_data->OSEventTbl[0];
-    for (i = 0; i < OS_EVENT_TBL_SIZE; i++) {
+    for (i = 0; i < OS_EVENT_TBL_SIZE; i++) 
+    {
         *pdest++ = *psrc++;
     }
+    // 队列控制块
     pq = (OS_Q *)pevent->OSEventPtr;
-    if (pq->OSQEntries > 0) {
-        p_q_data->OSMsg = *pq->OSQOut;                 /* Get next message to return if available      */
-    } else {
+	// 消息个数大于0?
+    if (pq->OSQEntries > 0) 						  /* Get next message to return if available      */
+    {
+    	// 提取消息
+        p_q_data->OSMsg = *pq->OSQOut;                 
+    } 
+    else 
+    {
         p_q_data->OSMsg = (void *)0;
     }
+    // 消息个数
     p_q_data->OSNMsgs = pq->OSQEntries;
+	// 队列长度
     p_q_data->OSQSize = pq->OSQSize;
     OS_EXIT_CRITICAL();
     return (OS_NO_ERR);

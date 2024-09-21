@@ -16,6 +16,8 @@
 #include "ucos_ii.h"
 
 
+
+
 /*
 *********************************************************************************************************
 *                                        INITIALIZE A TASK'S STACK
@@ -44,15 +46,12 @@
 *              2) All tasks run in SVC mode.
 *********************************************************************************************************
 */
-
+// 构造任务的栈
 OS_STK *OSTaskStkInit (void (*task)(void *pd), void *p_arg, OS_STK *ptos, INT16U opt)
 {
     OS_STK *stk;
-
     opt      = opt;                 /* 'opt' is not used, prevent warning                      */
-    
     stk      = ptos;                /* Load stack pointer                                      */
-    
     *(stk)   = (OS_STK)task;        /* Entry Point                                             */
     *(--stk) = (INT32U)0;         	/* LR                                                      */
     *(--stk) = (INT32U)0;         	/* R12                                                     */
@@ -79,8 +78,9 @@ OS_STK *OSTaskStkInit (void (*task)(void *pd), void *p_arg, OS_STK *ptos, INT16U
 *                                       OS INITIALIZATION HOOK
 *                                            (BEGINNING)
 *
-* Description: This function is called by OSInit() at the beginning of OSInit().
-*
+* Description: This function is called by OSInit() at the beginning of OSInit().	|	进入OSInit()函数后，OSInitHookBegin()就会
+* 立即被调用。添加这个函数的原因在于，使得用户可以将自己特定的代码也放在OSInit()函数中。
+* 
 * Arguments  : none
 *
 * Note(s)    : 1) Interrupts should be disabled during this call.

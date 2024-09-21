@@ -24,7 +24,7 @@ extern "C" {
 *                                          uC/OS-II VERSION NUMBER
 *********************************************************************************************************
 */
-
+// 版本号
 #define  OS_VERSION                 283u                /* Version of uC/OS-II (Vx.yy mult. by 100)    */
 
 /*
@@ -66,12 +66,14 @@ extern "C" {
 #define  OS_PRIO_SELF              0xFFu                /* Indicate SELF priority                      */
 
 #if OS_TASK_STAT_EN > 0
-#define  OS_N_SYS_TASKS               2u                /* Number of system tasks                      */
+// 系统任务的数目            
+#define  OS_N_SYS_TASKS               2u                /* Number of system tasks  			           */
 #else
 #define  OS_N_SYS_TASKS               1u
 #endif
-
+// 统计任务的优先级
 #define  OS_TASK_STAT_PRIO  (OS_LOWEST_PRIO - 1)        /* Statistic task priority                     */
+// 空闲任务的优先级
 #define  OS_TASK_IDLE_PRIO  (OS_LOWEST_PRIO)            /* IDLE      task priority                     */
 
 #if OS_LOWEST_PRIO <= 63
@@ -82,7 +84,9 @@ extern "C" {
 #define  OS_RDY_TBL_SIZE   ((OS_LOWEST_PRIO) / 16 + 1)  /* Size of ready table                         */
 #endif
 
+// 空闲任务的ID
 #define  OS_TASK_IDLE_ID          65535u                /* ID numbers for Idle, Stat and Timer tasks   */
+// 统计任务的ID
 #define  OS_TASK_STAT_ID          65534u
 #define  OS_TASK_TMR_ID           65533u
 
@@ -182,6 +186,10 @@ extern "C" {
 *                                 TASK OPTIONS (see OSTaskCreateExt())
 *********************************************************************************************************
 */
+// 1.OS_TASK_OPT_NONE: 没用
+// 2.OS_TASK_OPT_STK_CHK: 允许检验任务栈
+// 3.OS_TASK_OPT_STK_CLR: 将任务栈清空(写0)
+// 4.OS_TASK_OPT_SAVE_FP: 任务要做浮点运算
 #define  OS_TASK_OPT_NONE        0x0000u    /* NO option selected                                      */
 #define  OS_TASK_OPT_STK_CHK     0x0001u    /* Enable stack checking for the task                      */
 #define  OS_TASK_OPT_STK_CLR     0x0002u    /* Clear the stack when the task is create                 */
@@ -315,16 +323,25 @@ extern "C" {
 */
 
 #if OS_EVENT_EN && (OS_MAX_EVENTS > 0)
-typedef struct os_event {
-    INT8U    OSEventType;                    /* Type of event control block (see OS_EVENT_TYPE_xxxx)    */
-    void    *OSEventPtr;                     /* Pointer to message or queue structure                   */
-    INT16U   OSEventCnt;                     /* Semaphore Count (not used if other EVENT type)          */
+// 事件控制块
+typedef struct os_event 
+{
+	// 事件类型: 信号量、邮箱或消息队列
+    INT8U    OSEventType;                   /* Type of event control block (see OS_EVENT_TYPE_xxxx)    			*/
+    // 指向消息或者消息队列的指针:
+    // 当所定义的事件是邮箱时，它指向一个消息，
+    // 当所定义的事件是消息队列时，它指向一个数据结构
+    void    *OSEventPtr;                    /* Pointer to message or queue structure                   			*/
+    // 计数器(当事件是信号量时)
+    INT16U   OSEventCnt;                    /* Semaphore Count (not used if other EVENT type)          			*/
 #if OS_LOWEST_PRIO <= 63
-    INT8U    OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur */
-    INT8U    OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                */
+	// 等待任务所在的组
+    INT8U    OSEventGrp;                    /* Group corresponding to tasks waiting for event to occur 			*/
+	// 等待任务表
+    INT8U    OSEventTbl[OS_EVENT_TBL_SIZE]; /* List of tasks waiting for event to occur                			*/
 #else
-    INT16U   OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur */
-    INT16U   OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                */
+    INT16U   OSEventGrp;                    /* Group corresponding to tasks waiting for event to occur 			*/
+    INT16U   OSEventTbl[OS_EVENT_TBL_SIZE]; /* List of tasks waiting for event to occur                			*/
 #endif
 
 #if OS_EVENT_NAME_SIZE > 1
@@ -342,7 +359,7 @@ typedef struct os_event {
 
 #if (OS_VERSION >= 251) && (OS_FLAG_EN > 0) && (OS_MAX_FLAGS > 0)
 
-#if OS_FLAGS_NBITS == 8                     /* Determine the size of OS_FLAGS (8, 16 or 32 bits)       */
+#if OS_FLAGS_NBITS == 8                     /* Determine the size of OS_FLAGS (8, 16 or 32 bits)       			*/
 typedef  INT8U    OS_FLAGS;
 #endif
 
@@ -355,10 +372,10 @@ typedef  INT32U   OS_FLAGS;
 #endif
 
 
-typedef struct os_flag_grp {                /* Event Flag Group                                        */
-    INT8U         OSFlagType;               /* Should be set to OS_EVENT_TYPE_FLAG                     */
-    void         *OSFlagWaitList;           /* Pointer to first NODE of task waiting on event flag     */
-    OS_FLAGS      OSFlagFlags;              /* 8, 16 or 32 bit flags                                   */
+typedef struct os_flag_grp {             /* Event Flag Group                                         			*/
+    INT8U         OSFlagType;               /* Should be set to OS_EVENT_TYPE_FLAG                      		*/
+    void         *OSFlagWaitList;           /* Pointer to first NODE of task waiting on event flag      		*/
+    OS_FLAGS      OSFlagFlags;              /* 8, 16 or 32 bit flags                                    		*/
 #if OS_FLAG_NAME_SIZE > 1
     INT8U         OSFlagName[OS_FLAG_NAME_SIZE];
 #endif
@@ -366,17 +383,17 @@ typedef struct os_flag_grp {                /* Event Flag Group                 
 
 
 
-typedef struct os_flag_node {               /* Event Flag Wait List Node                               */
-    void         *OSFlagNodeNext;           /* Pointer to next     NODE in wait list                   */
-    void         *OSFlagNodePrev;           /* Pointer to previous NODE in wait list                   */
-    void         *OSFlagNodeTCB;            /* Pointer to TCB of waiting task                          */
-    void         *OSFlagNodeFlagGrp;        /* Pointer to Event Flag Group                             */
-    OS_FLAGS      OSFlagNodeFlags;          /* Event flag to wait on                                   */
-    INT8U         OSFlagNodeWaitType;       /* Type of wait:                                           */
-                                            /*      OS_FLAG_WAIT_AND                                   */
-                                            /*      OS_FLAG_WAIT_ALL                                   */
-                                            /*      OS_FLAG_WAIT_OR                                    */
-                                            /*      OS_FLAG_WAIT_ANY                                   */
+typedef struct os_flag_node {            /* Event Flag Wait List Node                             			*/
+    void         *OSFlagNodeNext;           /* Pointer to next     NODE in wait list                   			*/
+    void         *OSFlagNodePrev;           /* Pointer to previous NODE in wait list                   			*/
+    void         *OSFlagNodeTCB;            /* Pointer to TCB of waiting task                          			*/
+    void         *OSFlagNodeFlagGrp;        /* Pointer to Event Flag Group                             			*/
+    OS_FLAGS      OSFlagNodeFlags;          /* Event flag to wait on                                   			*/
+    INT8U         OSFlagNodeWaitType;       /* Type of wait:                                           			*/
+                                            /*      OS_FLAG_WAIT_AND                                   			*/
+                                            /*      OS_FLAG_WAIT_ALL                                   			*/
+                                            /*      OS_FLAG_WAIT_OR                                    			*/
+                                            /*      OS_FLAG_WAIT_ANY                                   			*/
 } OS_FLAG_NODE;
 #endif
 
@@ -389,13 +406,13 @@ typedef struct os_flag_node {               /* Event Flag Wait List Node        
 
 #if OS_MBOX_EN > 0
 typedef struct os_mbox_data {
-    void   *OSMsg;                         /* Pointer to message in mailbox                            */
+    void   *OSMsg;                          /* Pointer to message in mailbox                            		*/
 #if OS_LOWEST_PRIO <= 63
-    INT8U   OSEventTbl[OS_EVENT_TBL_SIZE]; /* List of tasks waiting for event to occur                 */
-    INT8U   OSEventGrp;                    /* Group corresponding to tasks waiting for event to occur  */
+    INT8U   OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                 		*/
+    INT8U   OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur  		*/
 #else
-    INT16U  OSEventTbl[OS_EVENT_TBL_SIZE]; /* List of tasks waiting for event to occur                 */
-    INT16U  OSEventGrp;                    /* Group corresponding to tasks waiting for event to occur  */
+    INT16U  OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                 		*/
+    INT16U  OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur  		*/
 #endif
 } OS_MBOX_DATA;
 #endif
@@ -405,27 +422,41 @@ typedef struct os_mbox_data {
 *                                     MEMORY PARTITION DATA STRUCTURES
 *********************************************************************************************************
 */
-
+// 内存控制块
 #if (OS_MEM_EN > 0) && (OS_MAX_MEM_PART > 0)
-typedef struct os_mem {                   /* MEMORY CONTROL BLOCK                                      */
-    void   *OSMemAddr;                    /* Pointer to beginning of memory partition                  */
-    void   *OSMemFreeList;                /* Pointer to list of free memory blocks                     */
-    INT32U  OSMemBlkSize;                 /* Size (in bytes) of each block of memory                   */
-    INT32U  OSMemNBlks;                   /* Total number of blocks in this partition                  */
-    INT32U  OSMemNFree;                   /* Number of memory blocks remaining in this partition       */
+typedef struct os_mem 						/* MEMORY CONTROL BLOCK                                      		*/
+{  	     
+	// 内存分区起始地址
+    void   *OSMemAddr;                    	/* Pointer to beginning of memory partition                  		*/
+	// 下一个空闲内存块
+    void   *OSMemFreeList;                	/* Pointer to list of free memory blocks                     		*/
+	// 内存块的大小
+    INT32U  OSMemBlkSize;                 	/* Size (in bytes) of each block of memory                   		*/
+	// 内存分区中内存块数量
+    INT32U  OSMemNBlks;                   	/* Total number of blocks in this partition                  		*/
+	// 内存分区中空闲的内存块的数量
+    INT32U  OSMemNFree;                   	/* Number of memory blocks remaining in this partition       		*/
 #if OS_MEM_NAME_SIZE > 1
-    INT8U   OSMemName[OS_MEM_NAME_SIZE];  /* Memory partition name                                     */
+	// 内存分区的名字
+    INT8U   OSMemName[OS_MEM_NAME_SIZE];  	/* Memory partition name                                     		*/
 #endif
 } OS_MEM;
 
-
-typedef struct os_mem_data {
-    void   *OSAddr;                    /* Pointer to the beginning address of the memory partition     */
-    void   *OSFreeList;                /* Pointer to the beginning of the free list of memory blocks   */
-    INT32U  OSBlkSize;                 /* Size (in bytes) of each memory block                         */
-    INT32U  OSNBlks;                   /* Total number of blocks in the partition                      */
-    INT32U  OSNFree;                   /* Number of memory blocks free                                 */
-    INT32U  OSNUsed;                   /* Number of memory blocks used                                 */
+// 内存分区相关信息
+typedef struct os_mem_data 
+{
+	// 指向内存分区首地址的指针 
+    void   *OSAddr;                    		/* Pointer to the beginning address of the memory partition     	*/
+	// 指向空闲内存块链表首地址的指针
+    void   *OSFreeList;                		/* Pointer to the beginning of the free list of memory blocks   	*/
+	// 每个内存块所含的字节数
+    INT32U  OSBlkSize;                 		/* Size (in bytes) of each memory block                         	*/
+	// 内存分区总的内存块数
+    INT32U  OSNBlks;                   		/* Total number of blocks in the partition                      	*/
+	// 空闲内存块总数
+    INT32U  OSNFree;                   		/* Number of memory blocks free                                 	*/
+	// 正在使用的内存块总数 
+    INT32U  OSNUsed;                   		/* Number of memory blocks used                                 	*/
 } OS_MEM_DATA;
 #endif
 
@@ -439,15 +470,15 @@ typedef struct os_mem_data {
 #if OS_MUTEX_EN > 0
 typedef struct os_mutex_data {
 #if OS_LOWEST_PRIO <= 63
-    INT8U   OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                */
-    INT8U   OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur */
+    INT8U   OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                			*/
+    INT8U   OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur 			*/
 #else
-    INT16U  OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                */
-    INT16U  OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur */
+    INT16U  OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                			*/
+    INT16U  OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur 			*/
 #endif
-    INT8U   OSValue;                        /* Mutex value (0 = used, 1 = available)                   */
-    INT8U   OSOwnerPrio;                    /* Mutex owner's task priority or 0xFF if no owner         */
-    INT8U   OSMutexPIP;                     /* Priority Inheritance Priority or 0xFF if no owner       */
+    INT8U   OSValue;                        /* Mutex value (0 = used, 1 = available)                   			*/
+    INT8U   OSOwnerPrio;                    /* Mutex owner's task priority or 0xFF if no owner         			*/
+    INT8U   OSMutexPIP;                     /* Priority Inheritance Priority or 0xFF if no owner       			*/
 } OS_MUTEX_DATA;
 #endif
 
@@ -458,27 +489,40 @@ typedef struct os_mutex_data {
 */
 
 #if OS_Q_EN > 0
-typedef struct os_q {                   /* QUEUE CONTROL BLOCK                                         */
-    struct os_q   *OSQPtr;              /* Link to next queue control block in list of free blocks     */
-    void         **OSQStart;            /* Pointer to start of queue data                              */
-    void         **OSQEnd;              /* Pointer to end   of queue data                              */
-    void         **OSQIn;               /* Pointer to where next message will be inserted  in   the Q  */
-    void         **OSQOut;              /* Pointer to where next message will be extracted from the Q  */
-    INT16U         OSQSize;             /* Size of queue (maximum number of entries)                   */
-    INT16U         OSQEntries;          /* Current number of entries in the queue                      */
+// 队列控制块
+typedef struct os_q {                  	/* QUEUE CONTROL BLOCK                                         		*/
+	// 下一个队列控制块
+    struct os_q   *OSQPtr;              	/* Link to next queue control block in list of free blocks     		*/
+	// 队列头
+    void         **OSQStart;            	/* Pointer to start of queue data                              		*/
+	// 队列尾
+    void         **OSQEnd;              	/* Pointer to end   of queue data                              		*/
+	// 新消息插入的地方
+    void         **OSQIn;               	/* Pointer to where next message will be inserted  in   the Q  		*/
+	// 下一个被取出的消息
+    void         **OSQOut;              	/* Pointer to where next message will be extracted from the Q  		*/
+	// 队列长度
+    INT16U         OSQSize;             	/* Size of queue (maximum number of entries)                   		*/
+    // 消息个数
+    INT16U         OSQEntries;          	/* Current number of entries in the queue                      		*/
 } OS_Q;
 
-
-typedef struct os_q_data {
-    void          *OSMsg;               /* Pointer to next message to be extracted from queue          */
-    INT16U         OSNMsgs;             /* Number of messages in message queue                         */
-    INT16U         OSQSize;             /* Size of message queue                                       */
+// 消息队列信息结构体
+typedef struct os_q_data 
+{
+	// 下一个被取出的消息
+    void          *OSMsg;               	/* Pointer to next message to be extracted from queue          		*/
+	// 消息个数
+    INT16U         OSNMsgs;             	/* Number of messages in message queue                         		*/
+	// 队列长度
+    INT16U         OSQSize;             	/* Size of message queue                                       		*/
 #if OS_LOWEST_PRIO <= 63
-    INT8U          OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur         */
-    INT8U          OSEventGrp;          /* Group corresponding to tasks waiting for event to occur     */
+	// 等待任务表
+    INT8U          OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur         	   		*/
+    INT8U          OSEventGrp;          	/* Group corresponding to tasks waiting for event to occur     		*/
 #else
-    INT16U         OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur         */
-    INT16U         OSEventGrp;          /* Group corresponding to tasks waiting for event to occur     */
+    INT16U         OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur             		*/
+    INT16U         OSEventGrp;          	/* Group corresponding to tasks waiting for event to occur     		*/
 #endif
 } OS_Q_DATA;
 #endif
@@ -488,16 +532,20 @@ typedef struct os_q_data {
 *                                           SEMAPHORE DATA
 *********************************************************************************************************
 */
-
+// 信号量信息结构体
 #if OS_SEM_EN > 0
-typedef struct os_sem_data {
-    INT16U  OSCnt;                          /* Semaphore count                                         */
+typedef struct os_sem_data 
+{
+	// 计数器
+    INT16U  OSCnt;                          /* Semaphore count                                         			*/
 #if OS_LOWEST_PRIO <= 63
-    INT8U   OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                */
-    INT8U   OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur */
+	// 等待任务表
+    INT8U   OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                			*/
+    // 等待任务所在的组
+    INT8U   OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur 			*/
 #else
-    INT16U  OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                */
-    INT16U  OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur */
+    INT16U  OSEventTbl[OS_EVENT_TBL_SIZE];  /* List of tasks waiting for event to occur                			*/
+    INT16U  OSEventGrp;                     /* Group corresponding to tasks waiting for event to occur 			*/
 #endif
 } OS_SEM_DATA;
 #endif
@@ -509,9 +557,13 @@ typedef struct os_sem_data {
 */
 
 #if OS_TASK_CREATE_EXT_EN > 0
-typedef struct os_stk_data {
-    INT32U  OSFree;                    /* Number of free bytes on the stack                            */
-    INT32U  OSUsed;                    /* Number of bytes used on the stack                            */
+// 栈相关信息
+typedef struct os_stk_data 
+{
+	// 可用空间
+    INT32U  OSFree;                    		/* Number of free bytes on the stack                            	*/
+    // 已用空间
+    INT32U  OSUsed;                    		/* Number of bytes used on the stack                            	*/
 } OS_STK_DATA;
 #endif
 
@@ -521,64 +573,85 @@ typedef struct os_stk_data {
 *                                          TASK CONTROL BLOCK
 *********************************************************************************************************
 */
-
-typedef struct os_tcb {
-    OS_STK          *OSTCBStkPtr;      /* Pointer to current top of stack                              */
-
+// 任务控制块
+typedef struct os_tcb 
+{
+	// 指向任务栈栈顶的指针	
+    OS_STK          *OSTCBStkPtr;      		/* Pointer to current top of stack	                                */
+    
+	// 下面这几个变量只能在OsTaskCreateExt()中使用
 #if OS_TASK_CREATE_EXT_EN > 0
-    void            *OSTCBExtPtr;      /* Pointer to user definable data for TCB extension             */
-    OS_STK          *OSTCBStkBottom;   /* Pointer to bottom of stack                                   */
-    INT32U           OSTCBStkSize;     /* Size of task stack (in number of stack elements)             */
-    INT16U           OSTCBOpt;         /* Task options as passed by OSTaskCreateExt()                  */
-    INT16U           OSTCBId;          /* Task ID (0..65535)                                           */
+	// 指向用户自定义的任务控制块扩展  
+    void            *OSTCBExtPtr;      		/* Pointer to user definable data for TCB extension   		   		*/
+	// 指向任务栈栈底的指针          
+    OS_STK          *OSTCBStkBottom;   		/* Pointer to bottom of stack                        	 			*/
+    // 栈的容量，单位是地址(可能是16bit/32bit) 
+    INT32U           OSTCBStkSize;     		/* Size of task stack (in number of stack elements)  			    */
+    // 传递给OsTaskCreateExt()的选择项     
+    INT16U           OSTCBOpt;         		/* Task options as passed by OSTaskCreateExt()  		            */
+    // 任务ID
+    INT16U           OSTCBId;          		/* Task ID (0..65535)	                                            */
 #endif
 
-    struct os_tcb   *OSTCBNext;        /* Pointer to next     TCB in the TCB list                      */
-    struct os_tcb   *OSTCBPrev;        /* Pointer to previous TCB in the TCB list                      */
+	// 下一个TCB ，TCB链表是双向链表
+    struct os_tcb   *OSTCBNext;        		/* Pointer to next     TCB in the TCB list    		                */
+    // 上一个TCB                  	
+    struct os_tcb   *OSTCBPrev;        		/* Pointer to previous TCB in the TCB list   						*/
 
 #if OS_EVENT_EN
-    OS_EVENT        *OSTCBEventPtr;    /* Pointer to event control block                               */
+	// 指向事件控制块的指针		 
+    OS_EVENT        *OSTCBEventPtr;    		/* Pointer to event control block                    				*/
 #endif
 
+	// 指向传递给任务的消息的指针
 #if ((OS_Q_EN > 0) && (OS_MAX_QS > 0)) || (OS_MBOX_EN > 0)
-    void            *OSTCBMsg;         /* Message received from OSMboxPost() or OSQPost()              */
+    void            *OSTCBMsg;        		 /* Message received from OSMboxPost() or OSQPost()    			    */
 #endif
 
 #if (OS_VERSION >= 251) && (OS_FLAG_EN > 0) && (OS_MAX_FLAGS > 0)
 #if OS_TASK_DEL_EN > 0
-    OS_FLAG_NODE    *OSTCBFlagNode;    /* Pointer to event flag node                                   */
+	// 指向事件标志节点的指针  
+    OS_FLAG_NODE    *OSTCBFlagNode;   	 	/* Pointer to event flag node                                 		*/
 #endif
-    OS_FLAGS         OSTCBFlagsRdy;    /* Event flags that made task ready to run                      */
+	// 当任务等待事件标志组时， 任务进入就绪态的标志
+    OS_FLAGS         OSTCBFlagsRdy;    		/* Event flags that made task ready to run     	 		   			*/
 #endif
 
-    INT16U           OSTCBDly;         /* Nbr ticks to delay task or, timeout waiting for event        */
-    INT8U            OSTCBStat;        /* Task status                                                  */
-    BOOLEAN          OSTCBPendTO;      /* Flag indicating PEND timed out (OS_TRUE == timed out)           */
-    INT8U            OSTCBPrio;        /* Task priority (0 == highest)                                 */
+	// 任务延时等待的时间长度，单位是tick		 
+    INT16U           OSTCBDly;        		/* Nbr ticks to delay task or, timeout waiting for event   			*/
+	// 任务的状态，如OS_STAT_RDY
+    INT8U            OSTCBStat;        		/* Task status       		                               			*/
+	// 延时等待最大时间是否已经到了
+    BOOLEAN          OSTCBPendTO;      		/* Flag indicating PEND timed out (OS_TRUE == timed out)   			*/
+	// 任务的优先级		
+    INT8U            OSTCBPrio;        		/* Task priority (0 == highest)       			           			*/
 
-    INT8U            OSTCBX;           /* Bit position in group  corresponding to task priority        */
-    INT8U            OSTCBY;           /* Index into ready table corresponding to task priority        */
+	// 在任务创建时就算好下面4个变量的值，用于加速任务进入就绪态的过程
+    INT8U            OSTCBX;           		/* Bit position in group  corresponding to task priority        	*/
+    INT8U            OSTCBY;          		/* Index into ready table corresponding to task priority        	*/
 #if OS_LOWEST_PRIO <= 63
-    INT8U            OSTCBBitX;        /* Bit mask to access bit position in ready table               */
-    INT8U            OSTCBBitY;        /* Bit mask to access bit position in ready group               */
+    INT8U            OSTCBBitX;        		/* Bit mask to access bit position in ready table               	*/
+    INT8U            OSTCBBitY;        		/* Bit mask to access bit position in ready group               	*/
 #else
-    INT16U           OSTCBBitX;        /* Bit mask to access bit position in ready table               */
-    INT16U           OSTCBBitY;        /* Bit mask to access bit position in ready group               */
+    INT16U           OSTCBBitX;        		/* Bit mask to access bit position in ready table               	*/
+    INT16U           OSTCBBitY;        		/* Bit mask to access bit position in ready group               	*/
 #endif
 
 #if OS_TASK_DEL_EN > 0
-    INT8U            OSTCBDelReq;      /* Indicates whether a task needs to delete itself              */
+	// 标志该任务是否需要被删除					 
+    INT8U            OSTCBDelReq;      		/* Indicates whether a task needs to delete itself     		  		*/
 #endif
 
 #if OS_TASK_PROFILE_EN > 0
-    INT32U           OSTCBCtxSwCtr;    /* Number of time the task was switched in                      */
-    INT32U           OSTCBCyclesTot;   /* Total number of clock cycles the task has been running       */
-    INT32U           OSTCBCyclesStart; /* Snapshot of cycle counter at start of task resumption        */
-    OS_STK          *OSTCBStkBase;     /* Pointer to the beginning of the task stack                   */
-    INT32U           OSTCBStkUsed;     /* Number of bytes used from the stack                          */
+    INT32U           OSTCBCtxSwCtr;    		/* Number of time the task was switched in                      	*/
+    INT32U           OSTCBCyclesTot;   		/* Total number of clock cycles the task has been running       	*/
+    INT32U           OSTCBCyclesStart; 		/* Snapshot of cycle counter at start of task resumption        	*/
+    OS_STK          *OSTCBStkBase;     		/* Pointer to the beginning of the task stack                   	*/
+    INT32U           OSTCBStkUsed;     		/* Number of bytes used from the stack                          	*/
 #endif
 
 #if OS_TASK_NAME_SIZE > 1
+	// 任务名									   	
     INT8U            OSTCBTaskName[OS_TASK_NAME_SIZE];
 #endif
 } OS_TCB;
@@ -593,31 +666,29 @@ typedef struct os_tcb {
 #if OS_TMR_EN > 0
 typedef  void (*OS_TMR_CALLBACK)(void *ptmr, void *parg);
 
-
-
 typedef  struct  os_tmr {
-    INT8U            OSTmrType;                       /* Should be set to OS_TMR_TYPE                                  */
-    OS_TMR_CALLBACK  OSTmrCallback;                   /* Function to call when timer expires                           */
-    void            *OSTmrCallbackArg;                /* Argument to pass to function when timer expires               */
-    void            *OSTmrNext;                       /* Double link list pointers                                     */
+    INT8U            OSTmrType;                       /* Should be set to OS_TMR_TYPE                           */
+    OS_TMR_CALLBACK  OSTmrCallback;                   /* Function to call when timer expires                    */
+    void            *OSTmrCallbackArg;                /* Argument to pass to function when timer expires        */
+    void            *OSTmrNext;                       /* Double link list pointers                              */
     void            *OSTmrPrev;
-    INT32U           OSTmrMatch;                      /* Timer expires when OSTmrTime == OSTmrMatch                    */
-    INT32U           OSTmrDly;                        /* Delay time before periodic update starts                      */
-    INT32U           OSTmrPeriod;                     /* Period to repeat timer                                        */
+    INT32U           OSTmrMatch;                      /* Timer expires when OSTmrTime == OSTmrMatch             */
+    INT32U           OSTmrDly;                        /* Delay time before periodic update starts               */
+    INT32U           OSTmrPeriod;                     /* Period to repeat timer                                 */
 #if OS_TMR_CFG_NAME_SIZE > 0
-    INT8U            OSTmrName[OS_TMR_CFG_NAME_SIZE]; /* Name to give the timer                                        */
+    INT8U            OSTmrName[OS_TMR_CFG_NAME_SIZE]; /* Name to give the timer                                 */
 #endif
-    INT8U            OSTmrOpt;                        /* Options (see OS_TMR_OPT_???)                                  */
-    INT8U            OSTmrState;                      /* Indicates the state of the timer:                             */
-                                                      /*     OS_TMR_STATE_UNUSED                                       */
-                                                      /*     OS_TMR_STATE_RUNNING                                      */
-                                                      /*     OS_TMR_STATE_STOPPED                                      */
+    INT8U            OSTmrOpt;                        /* Options (see OS_TMR_OPT_???)                           */
+    INT8U            OSTmrState;                      /* Indicates the state of the timer:                      */
+                                                      /*     OS_TMR_STATE_UNUSED                                */
+                                                      /*     OS_TMR_STATE_RUNNING                               */
+                                                      /*     OS_TMR_STATE_STOPPED                               */
 } OS_TMR;
 
 
 
 typedef  struct  os_tmr_wheel {
-    OS_TMR          *OSTmrFirst;                      /* Pointer to first timer in linked list                         */
+    OS_TMR          *OSTmrFirst;                      /* Pointer to first timer in linked list                  */
     INT16U           OSTmrEntries;
 } OS_TMR_WHEEL;
 #endif
@@ -628,11 +699,13 @@ typedef  struct  os_tmr_wheel {
 *                                            GLOBAL VARIABLES
 *********************************************************************************************************
 */
-
+// 任务切换次数	  
 OS_EXT  INT32U            OSCtxSwCtr;               /* Counter of number of context switches           */
 
 #if OS_EVENT_EN && (OS_MAX_EVENTS > 0)
+// 可用ECB链表的表头，这是一个单向链表
 OS_EXT  OS_EVENT         *OSEventFreeList;          /* Pointer to list of free EVENT control blocks    */
+// 事件控制块数组  
 OS_EXT  OS_EVENT          OSEventTbl[OS_MAX_EVENTS];/* Table of EVENT control blocks                   */
 #endif
 
@@ -642,60 +715,78 @@ OS_EXT  OS_FLAG_GRP      *OSFlagFreeList;           /* Pointer to free list of e
 #endif
 
 #if OS_TASK_STAT_EN > 0
-OS_EXT  INT8S             OSCPUUsage;               /* Percentage of CPU used                          */
+// CPU的利用率						
+OS_EXT  INT8S             OSCPUUsage;               /* Percentage of CPU used   					   */
+// 空闲任务1/10秒计数器能达到的最大值
 OS_EXT  INT32U            OSIdleCtrMax;             /* Max. value that idle ctr can take in 1 sec.     */
+// 过去1/10秒内空闲任务的计数值
 OS_EXT  INT32U            OSIdleCtrRun;             /* Val. reached by idle ctr at run time in 1 sec.  */
+// 统计任务是否准备好了
 OS_EXT  BOOLEAN           OSStatRdy;                /* Flag indicating that the statistic task is rdy  */
 OS_EXT  OS_STK            OSTaskStatStk[OS_TASK_STAT_STK_SIZE];      /* Statistics task stack          */
 #endif
 
+
+// 中断嵌套层数
 OS_EXT  INT8U             OSIntNesting;             /* Interrupt nesting level                         */
-
-OS_EXT  INT8U             OSLockNesting;            /* Multitasking lock nesting level                 */
-
+// 等于0时允许任务调度,大于0时禁止任务调度  
+OS_EXT  INT8U             OSLockNesting;            /* Multitasking lock nesting level				   */
+// 当前任务的优先级
 OS_EXT  INT8U             OSPrioCur;                /* Priority of current task                        */
-OS_EXT  INT8U             OSPrioHighRdy;            /* Priority of highest priority task               */
+// 所有就绪任务中优先级最高的任务的优先级		  
+OS_EXT  INT8U             OSPrioHighRdy;            /* Priority of highest priority task  			   */
+
 
 #if OS_LOWEST_PRIO <= 63
-OS_EXT  INT8U             OSRdyGrp;                        /* Ready list group                         */
+// 每1bit对应一组任务的就绪状态,8个任务为1组		
+OS_EXT  INT8U             OSRdyGrp;                        /* Ready list group   					   */
+// 每1bit对应一个任务的就绪状态 
 OS_EXT  INT8U             OSRdyTbl[OS_RDY_TBL_SIZE];       /* Table of tasks which are ready to run    */
 #else
 OS_EXT  INT16U            OSRdyGrp;                        /* Ready list group                         */
 OS_EXT  INT16U            OSRdyTbl[OS_RDY_TBL_SIZE];       /* Table of tasks which are ready to run    */
 #endif
-
+// 是否启动多任务
 OS_EXT  BOOLEAN           OSRunning;                       /* Flag indicating that kernel is running   */
-
+// 任务数目
 OS_EXT  INT8U             OSTaskCtr;                       /* Number of tasks created                  */
-
-OS_EXT  volatile  INT32U  OSIdleCtr;                                 /* Idle counter                   */
-
+// 空闲任务的计数器                 
+OS_EXT  volatile  INT32U  OSIdleCtr;                       /* Idle counter  						   */
+// 空闲任务的栈
 OS_EXT  OS_STK            OSTaskIdleStk[OS_TASK_IDLE_STK_SIZE];      /* Idle task stack                */
-
-
-OS_EXT  OS_TCB           *OSTCBCur;                        /* Pointer to currently running TCB         */
-OS_EXT  OS_TCB           *OSTCBFreeList;                   /* Pointer to list of free TCBs             */
+// 当前任务的TCB       
+OS_EXT  OS_TCB           *OSTCBCur;                        /* Pointer to currently running TCB  	   */
+// 可用TCB链表的表头，这是一个单向链表
+OS_EXT  OS_TCB           *OSTCBFreeList;                   /* Pointer to list of free TCBs  	       */
+// 就绪且优先级最高的任务的TCB
 OS_EXT  OS_TCB           *OSTCBHighRdy;                    /* Pointer to highest priority TCB R-to-R   */
+// 已用TCB链表的表头，这是一个双向链表			
 OS_EXT  OS_TCB           *OSTCBList;                       /* Pointer to doubly linked list of TCBs    */
-OS_EXT  OS_TCB           *OSTCBPrioTbl[OS_LOWEST_PRIO + 1];/* Table of pointers to created TCBs        */
-OS_EXT  OS_TCB            OSTCBTbl[OS_MAX_TASKS + OS_N_SYS_TASKS];   /* Table of TCBs                  */
+// 按优先级排序的TCB数组
+OS_EXT  OS_TCB           *OSTCBPrioTbl[OS_LOWEST_PRIO + 1];/* Table of pointers to created TCBs   	   */
+// 任务控制块数组             			 	
+OS_EXT  OS_TCB            OSTCBTbl[OS_MAX_TASKS + OS_N_SYS_TASKS];   /* Table of TCBs    			   */
 
 #if OS_TICK_STEP_EN > 0
 OS_EXT  INT8U             OSTickStepState;          /* Indicates the state of the tick step feature    */
 #endif
 
 #if (OS_MEM_EN > 0) && (OS_MAX_MEM_PART > 0)
+// 空闲的内存控制块
 OS_EXT  OS_MEM           *OSMemFreeList;            /* Pointer to free list of memory partitions       */
+// 内存控制块表
 OS_EXT  OS_MEM            OSMemTbl[OS_MAX_MEM_PART];/* Storage for memory partition manager            */
 #endif
 
 #if (OS_Q_EN > 0) && (OS_MAX_QS > 0)
+// 空闲的队列控制块
 OS_EXT  OS_Q             *OSQFreeList;              /* Pointer to list of free QUEUE control blocks    */
 OS_EXT  OS_Q              OSQTbl[OS_MAX_QS];        /* Table of QUEUE control blocks                   */
 #endif
 
 #if OS_TIME_GET_SET_EN > 0
-OS_EXT  volatile  INT32U  OSTime;                   /* Current value of system time (in ticks)         */
+// 内核当前tick的次数      
+OS_EXT  volatile  INT32U  OSTime;                   /* Current value of system time (in ticks)	       */
 #endif
 
 #if OS_TMR_EN > 0

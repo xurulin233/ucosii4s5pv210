@@ -249,4 +249,5 @@ void disable_irq(void);
 void enable_irq(void);
 
 void timer_init(void);
+unsigned int get_int_vect(void);
 #endif

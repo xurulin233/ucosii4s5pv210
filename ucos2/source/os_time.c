@@ -32,7 +32,7 @@
 * Returns    : none
 *********************************************************************************************************
 */
-
+// 任务延时函数
 void  OSTimeDly (INT16U ticks)
 {
     INT8U      y;
@@ -40,17 +40,20 @@ void  OSTimeDly (INT16U ticks)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
-    if (ticks > 0) {                             /* 0 means no delay!                                  */
+    if (ticks > 0) 								 /* 0 means no delay!                                  */
+    {                             
         OS_ENTER_CRITICAL();
+        // 从就绪表中移除
         y            =  OSTCBCur->OSTCBY;        /* Delay current task                                 */
         OSRdyTbl[y] &= ~OSTCBCur->OSTCBBitX;
-        if (OSRdyTbl[y] == 0) {
+        if (OSRdyTbl[y] == 0) 
+        {
             OSRdyGrp &= ~OSTCBCur->OSTCBBitY;
         }
+        // 保存tick
         OSTCBCur->OSTCBDly = ticks;              /* Load ticks in TCB                                  */
         OS_EXIT_CRITICAL();
+		// 找出优先级最高的任务并进行任务切换	
         OS_Sched();                              /* Find next task to run!                             */
     }
 }
@@ -79,42 +82,53 @@ void  OSTimeDly (INT16U ticks)
 *              set to 0.  The actual delay is rounded to the nearest tick.
 *********************************************************************************************************
 */
-
+// 按时分秒延时函数
 #if OS_TIME_DLY_HMSM_EN > 0
 INT8U  OSTimeDlyHMSM (INT8U hours, INT8U minutes, INT8U seconds, INT16U milli)
 {
     INT32U ticks;
     INT16U loops;
 
-
 #if OS_ARG_CHK_EN > 0
-    if (hours == 0) {
-        if (minutes == 0) {
-            if (seconds == 0) {
-                if (milli == 0) {
+	// 检查时间的合理性
+    if (hours == 0) 
+    {
+        if (minutes == 0) 
+        {
+            if (seconds == 0) 
+            {
+                if (milli == 0) 
+                {
                     return (OS_TIME_ZERO_DLY);
                 }
             }
         }
     }
-    if (minutes > 59) {
+    if (minutes > 59) 
+    {
         return (OS_TIME_INVALID_MINUTES);        /* Validate arguments to be within range              */
     }
-    if (seconds > 59) {
+    if (seconds > 59) 
+    {
         return (OS_TIME_INVALID_SECONDS);
     }
-    if (milli > 999) {
+    if (milli > 999) 
+    {
         return (OS_TIME_INVALID_MILLI);
     }
 #endif
                                                  /* Compute the total number of clock ticks required.. */
                                                  /* .. (rounded to the nearest tick)                   */
+    // 时间转化为tick
     ticks = ((INT32U)hours * 3600L + (INT32U)minutes * 60L + (INT32U)seconds) * OS_TICKS_PER_SEC
           + OS_TICKS_PER_SEC * ((INT32U)milli + 500L / OS_TICKS_PER_SEC) / 1000L;
     loops = (INT16U)(ticks / 65536L);            /* Compute the integral number of 65536 tick delays   */
     ticks = ticks % 65536L;                      /* Obtain  the fractional number of ticks             */
+
+    // 调用OSTimeDly()进行延时
     OSTimeDly((INT16U)ticks);
-    while (loops > 0) {
+    while (loops > 0) 
+    {
         OSTimeDly((INT16U)32768u);
         OSTimeDly((INT16U)32768u);
         loops--;
@@ -148,6 +162,7 @@ INT8U  OSTimeDlyHMSM (INT8U hours, INT8U minutes, INT8U seconds, INT16U milli)
 *********************************************************************************************************
 */
 
+// 让处在延时期的任务结束延时
 #if OS_TIME_DLY_RESUME_EN > 0
 INT8U  OSTimeDlyResume (INT8U prio)
 {
@@ -156,40 +171,59 @@ INT8U  OSTimeDlyResume (INT8U prio)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
-    if (prio >= OS_LOWEST_PRIO) {
+    if (prio >= OS_LOWEST_PRIO) 
+    {
         return (OS_PRIO_INVALID);
     }
+    
     OS_ENTER_CRITICAL();
+    // 获得TCB
     ptcb = OSTCBPrioTbl[prio];                                 /* Make sure that task exist            */
-    if (ptcb == (OS_TCB *)0) {
+    if (ptcb == (OS_TCB *)0) 
+    {
         OS_EXIT_CRITICAL();
         return (OS_TASK_NOT_EXIST);                            /* The task does not exist              */
     }
-    if (ptcb == (OS_TCB *)1) {
+    if (ptcb == (OS_TCB *)1) 
+    {
         OS_EXIT_CRITICAL();
         return (OS_TASK_NOT_EXIST);                            /* The task does not exist              */
     }
-    if (ptcb->OSTCBDly == 0) {                                 /* See if task is delayed               */
+
+    // 确保任务正在延时等待
+    if (ptcb->OSTCBDly == 0) 								   /* See if task is delayed               */
+    {                                 
         OS_EXIT_CRITICAL();
         return (OS_TIME_NOT_DLY);                              /* Indicate that task was not delayed   */
     }
 
+	// 清延时等待变量OSTCBDly
     ptcb->OSTCBDly = 0;                                        /* Clear the time delay                 */
-    if ((ptcb->OSTCBStat & OS_STAT_PEND_ANY) != OS_STAT_RDY) {
+
+    // 任务被延时等待前不是就绪的?
+    if ((ptcb->OSTCBStat & OS_STAT_PEND_ANY) != OS_STAT_RDY) 
+    {
         ptcb->OSTCBStat   &= ~OS_STAT_PEND_ANY;                /* Yes, Clear status flag               */
         ptcb->OSTCBPendTO  = OS_TRUE;                          /* Indicate PEND timeout                */
-    } else {
+    } 
+    else 
+    {
         ptcb->OSTCBPendTO  = OS_FALSE;
     }
-    if ((ptcb->OSTCBStat & OS_STAT_SUSPEND) == OS_STAT_RDY) {  /* Is task suspended?                   */
+
+    // 任务不是无条件挂起?
+    if ((ptcb->OSTCBStat & OS_STAT_SUSPEND) == OS_STAT_RDY)   /* Is task suspended?                   */
+    { 
+    	// 将任务添加到就绪表
         OSRdyGrp               |= ptcb->OSTCBBitY;             /* No,  Make ready                      */
         OSRdyTbl[ptcb->OSTCBY] |= ptcb->OSTCBBitX;
         OS_EXIT_CRITICAL();
-        OS_Sched();                                           /* See if this is new highest priority   */
-    } else {
-        OS_EXIT_CRITICAL();                                   /* Task may be suspended                 */
+        // 找出优先级最高的任务并进行任务切换
+        OS_Sched();                                            /* See if this is new highest priority   */
+    } 
+    else 
+    {
+        OS_EXIT_CRITICAL();                                    /* Task may be suspended                 */
     }
     return (OS_NO_ERR);
 }
@@ -216,8 +250,6 @@ INT32U  OSTimeGet (void)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
     OS_ENTER_CRITICAL();
     ticks = OSTime;
     OS_EXIT_CRITICAL();
@@ -236,15 +268,13 @@ INT32U  OSTimeGet (void)
 * Returns    : none
 *********************************************************************************************************
 */
-
+// 初始化tick time
 #if OS_TIME_GET_SET_EN > 0
 void  OSTimeSet (INT32U ticks)
 {
 #if OS_CRITICAL_METHOD == 3                      /* Allocate storage for CPU status register           */
     OS_CPU_SR  cpu_sr = 0;
 #endif
-
-
 
     OS_ENTER_CRITICAL();
     OSTime = ticks;

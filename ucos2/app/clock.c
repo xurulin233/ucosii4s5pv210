@@ -1,99 +1,18 @@
-// Ê±ÖÓ¿ØÖÆÆ÷»ùµØÖ·
-#define ELFIN_CLOCK_POWER_BASE		0xE0100000	
+#include "s5pv210.h"
 
-// Ê±ÖÓÏà¹ØµÄ¼Ä´æÆ÷Ïà¶ÔÊ±ÖÓ¿ØÖÆÆ÷»ùµØÖ·µÄÆ«ÒÆÖµ
-#define APLL_LOCK_OFFSET		0x00		
-#define MPLL_LOCK_OFFSET		0x08
-
-#define APLL_CON0_OFFSET		0x100
-#define APLL_CON1_OFFSET		0x104
-#define MPLL_CON_OFFSET			0x108
-
-#define CLK_SRC0_OFFSET			0x200
-#define CLK_SRC1_OFFSET			0x204
-#define CLK_SRC2_OFFSET			0x208
-#define CLK_SRC3_OFFSET			0x20c
-#define CLK_SRC4_OFFSET			0x210
-#define CLK_SRC5_OFFSET			0x214
-#define CLK_SRC6_OFFSET			0x218
-#define CLK_SRC_MASK0_OFFSET	0x280
-#define CLK_SRC_MASK1_OFFSET	0x284
-
-#define CLK_DIV0_OFFSET			0x300
-#define CLK_DIV1_OFFSET			0x304
-#define CLK_DIV2_OFFSET			0x308
-#define CLK_DIV3_OFFSET			0x30c
-#define CLK_DIV4_OFFSET			0x310
-#define CLK_DIV5_OFFSET			0x314
-#define CLK_DIV6_OFFSET			0x318
-#define CLK_DIV7_OFFSET			0x31c
-
-#define CLK_DIV0_MASK			0x7fffffff
-
-// ÕâĞ©M¡¢P¡¢SµÄÅäÖÃÖµ¶¼ÊÇ²éÊı¾İÊÖ²áÖĞµäĞÍÊ±ÖÓÅäÖÃÖµµÄÍÆ¼öÅäÖÃµÃÀ´µÄ¡£
-// ÕâĞ©ÅäÖÃÖµÊÇÈıĞÇÍÆ¼öµÄ£¬Òò´Ë¹¤×÷×îÎÈ¶¨¡£Èç¹ûÊÇ×Ô¼ºËæ±ãÏ¹Æ´´Õ³öÀ´µÄÄÇ¾ÍÒª
-// ¾­¹ıÑÏ¸ñ²âÊÔ£¬²ÅÄÜ±£Ö¤Ò»¶¨¶Ô¡£
-#define APLL_MDIV      	 		0x7d		// 125
-#define APLL_PDIV       		0x3
-#define APLL_SDIV       		0x1
-
-#define MPLL_MDIV				0x29b		// 667
-#define MPLL_PDIV				0xc
-#define MPLL_SDIV				0x1
-
-#define set_pll(mdiv, pdiv, sdiv)	(1<<31 | mdiv<<16 | pdiv<<8 | sdiv)
-#define APLL_VAL			set_pll(APLL_MDIV,APLL_PDIV,APLL_SDIV)
-#define MPLL_VAL			set_pll(MPLL_MDIV,MPLL_PDIV,MPLL_SDIV)
-
-
-#define REG_CLK_SRC0	(ELFIN_CLOCK_POWER_BASE + CLK_SRC0_OFFSET)
-#define REG_APLL_LOCK	(ELFIN_CLOCK_POWER_BASE + APLL_LOCK_OFFSET)
-#define REG_MPLL_LOCK	(ELFIN_CLOCK_POWER_BASE + MPLL_LOCK_OFFSET)
-#define REG_CLK_DIV0	(ELFIN_CLOCK_POWER_BASE + CLK_DIV0_OFFSET)
-#define REG_APLL_CON0	(ELFIN_CLOCK_POWER_BASE + APLL_CON0_OFFSET)
-#define REG_MPLL_CON	(ELFIN_CLOCK_POWER_BASE + MPLL_CON_OFFSET)
-
-#define rREG_CLK_SRC0	(*(volatile unsigned int *)REG_CLK_SRC0)
-#define rREG_APLL_LOCK	(*(volatile unsigned int *)REG_APLL_LOCK)
-#define rREG_MPLL_LOCK	(*(volatile unsigned int *)REG_MPLL_LOCK)
-#define rREG_CLK_DIV0	(*(volatile unsigned int *)REG_CLK_DIV0)
-#define rREG_APLL_CON0	(*(volatile unsigned int *)REG_APLL_CON0)
-#define rREG_MPLL_CON	(*(volatile unsigned int *)REG_MPLL_CON)
-
-
-void clock_init(void)
+void clock_init()
 {
-	// 1 ÉèÖÃ¸÷ÖÖÊ±ÖÓ¿ª¹Ø£¬ÔİÊ±²»Ê¹ÓÃPLL
-	rREG_CLK_SRC0 = 0x0;
-	
-	// 2 ÉèÖÃËø¶¨Ê±¼ä£¬Ê¹ÓÃÄ¬ÈÏÖµ¼´¿É
-	// ÉèÖÃPLLºó£¬Ê±ÖÓ´ÓFinÌáÉıµ½Ä¿±êÆµÂÊÊ±£¬ĞèÒªÒ»¶¨µÄÊ±¼ä£¬¼´Ëø¶¨Ê±¼ä
-	rREG_APLL_LOCK = 0x0000ffff;
-	rREG_MPLL_LOCK = 0x0000ffff;
-	
-	// 3 ÉèÖÃ·ÖÆµ
-	// Çåbit[0~31]
-	rREG_CLK_DIV0 = 0x14131440;
-	
-	// 4 ÉèÖÃPLL
-	// FOUT = MDIV*FIN/(PDIV*2^(SDIV-1))=0x7d*24/(0x3*2^(1-1))=1000 MHz
-	rREG_APLL_CON0 = APLL_VAL;
+	// è®¾ç½®å„ç§æ—¶é’Ÿå¼€å…³ï¼Œæš‚æ—¶ä¸ä½¿ç”¨PLL
+	CLK_SRC0  = 0x0;		
+	// è®¾ç½®é”å®šæ—¶é—´ï¼Œä½¿ç”¨é»˜è®¤å€¼å³å¯		
+	APLL_LOCK = 0x0000FFFF;																			
+	MPLL_LOCK = 0x0000FFFF;	
+	// è®¾ç½®åˆ†é¢‘
+	CLK_DIV0  = 0x14131440;																		
+	// FOUT= MDIV * FIN / (PDIV*2^(SDIV-1)) = 0x7d*24/(0x3*2^(1-1))=1000 MHz
+	APLL_CON0 = APLL_VAL;																		
 	// FOUT = MDIV*FIN/(PDIV*2^SDIV)=0x29b*24/(0xc*2^1)= 667 MHz
-	rREG_MPLL_CON = MPLL_VAL;
-	
-	// 5 ÉèÖÃ¸÷ÖÖÊ±ÖÓ¿ª¹Ø,Ê¹ÓÃPLL
-	rREG_CLK_SRC0 = 0x10001111;
+	MPLL_CON  = MPLL_VAL;																		
+	// è®¾ç½®å„ç§æ—¶é’Ÿå¼€å…³ï¼Œä½¿ç”¨PLL
+	CLK_SRC0  = 0x10001111;																		
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

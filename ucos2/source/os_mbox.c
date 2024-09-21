@@ -34,7 +34,9 @@
 *                            if you didn't pass the proper event pointer.
 *********************************************************************************************************
 */
-
+// 无等待地从邮箱中得到一个消息。
+// 中断服务子程序在试图得到一个消息时，
+// 应该使用 OSMboxAccept()函数，而不能使用 OSMboxPend()函数
 #if OS_MBOX_ACCEPT_EN > 0
 void  *OSMboxAccept (OS_EVENT *pevent)
 {
@@ -43,17 +45,20 @@ void  *OSMboxAccept (OS_EVENT *pevent)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (pevent == (OS_EVENT *)0) {                        /* Validate 'pevent'                         */
+    if (pevent == (OS_EVENT *)0) 						  /* Validate 'pevent'                         */
+    {                        
         return ((void *)0);
     }
 #endif
-    if (pevent->OSEventType != OS_EVENT_TYPE_MBOX) {      /* Validate event block type                 */
+	// 事件类型是邮箱?
+    if (pevent->OSEventType != OS_EVENT_TYPE_MBOX)		  /* Validate event block type                 */
+    {      
         return ((void *)0);
     }
+    
     OS_ENTER_CRITICAL();
+    // 获得邮箱消息
     msg                = pevent->OSEventPtr;
     pevent->OSEventPtr = (void *)0;                       /* Clear the mailbox                         */
     OS_EXIT_CRITICAL();
@@ -76,7 +81,7 @@ void  *OSMboxAccept (OS_EVENT *pevent)
 *              == (OS_EVENT *)0  if no event control blocks were available
 *********************************************************************************************************
 */
-
+// 创建一个邮箱
 OS_EVENT  *OSMboxCreate (void *msg)
 {
     OS_EVENT  *pevent;
@@ -84,25 +89,33 @@ OS_EVENT  *OSMboxCreate (void *msg)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
-    if (OSIntNesting > 0) {                      /* See if called from ISR ...                         */
+    if (OSIntNesting > 0) 						  /* See if called from ISR ...                         */
+    {                      
         return ((OS_EVENT *)0);                  /* ... can't CREATE from an ISR                       */
     }
+    
     OS_ENTER_CRITICAL();
+    // 获得ECB
     pevent = OSEventFreeList;                    /* Get next free event control block                  */
-    if (OSEventFreeList != (OS_EVENT *)0) {      /* See if pool of free ECB pool was empty             */
+    if (OSEventFreeList != (OS_EVENT *)0) 		 /* See if pool of free ECB pool was empty             */
+    {      
+	    // 更新OSEventFreeList
         OSEventFreeList = (OS_EVENT *)OSEventFreeList->OSEventPtr;
     }
     OS_EXIT_CRITICAL();
-    if (pevent != (OS_EVENT *)0) {
+    
+    if (pevent != (OS_EVENT *)0) 
+    {
+	    // 设置事件类型
         pevent->OSEventType    = OS_EVENT_TYPE_MBOX;
         pevent->OSEventCnt     = 0;
+        // 设置邮箱的消息
         pevent->OSEventPtr     = msg;            /* Deposit message in event control block             */
 #if OS_EVENT_NAME_SIZE > 1
         pevent->OSEventName[0] = '?';
         pevent->OSEventName[1] = OS_ASCII_NUL;
 #endif
+		// 初始化一个空的等待任务列表
         OS_EventWaitListInit(pevent);
     }
     return (pevent);                             /* Return pointer to event control block              */
@@ -201,6 +214,7 @@ OS_EVENT  *OSMboxDel (OS_EVENT *pevent, INT8U opt, INT8U *err)
 
         case OS_DEL_ALWAYS:                                /* Always delete the mailbox                */
              while (pevent->OSEventGrp != 0) {             /* Ready ALL tasks waiting for mailbox      */
+             	 // 从等待列表中找出使最高优先级任务（Highest Priority Task – HPT），并将其置于就绪态。
                  (void)OS_EventTaskRdy(pevent, (void *)0, OS_STAT_MBOX);
              }
 #if OS_EVENT_NAME_SIZE > 1
@@ -260,7 +274,7 @@ OS_EVENT  *OSMboxDel (OS_EVENT *pevent, INT8U opt, INT8U *err)
 *                            if you didn't pass the proper pointer to the event control block.
 *********************************************************************************************************
 */
-
+// 要求获得邮箱的消息
 void  *OSMboxPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
 {
     void      *msg;
@@ -268,53 +282,84 @@ void  *OSMboxPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (err == (INT8U *)0) {                          /* Validate 'err'                                */
+    if (err == (INT8U *)0) 							  /* Validate 'err'                                */
+    {                          
         return ((void *)0);
     }
-    if (pevent == (OS_EVENT *)0) {                    /* Validate 'pevent'                             */
+    if (pevent == (OS_EVENT *)0) 					  /* Validate 'pevent'                             */
+    {                    
         *err = OS_ERR_PEVENT_NULL;
         return ((void *)0);
     }
 #endif
-    if (pevent->OSEventType != OS_EVENT_TYPE_MBOX) {  /* Validate event block type                     */
+	// 事件类型是邮箱?
+    if (pevent->OSEventType != OS_EVENT_TYPE_MBOX) 	  /* Validate event block type                     */
+    {  
         *err = OS_ERR_EVENT_TYPE;
         return ((void *)0);
     }
-    if (OSIntNesting > 0) {                           /* See if called from ISR ...                    */
+    // 中断处理里不允许挂起
+    if (OSIntNesting > 0) 							  /* See if called from ISR ...                    */
+    {                           
         *err = OS_ERR_PEND_ISR;                       /* ... can't PEND from an ISR                    */
         return ((void *)0);
     }
-    if (OSLockNesting > 0) {                          /* See if called with scheduler locked ...       */
+    // 调度禁止时不允许挂起
+    if (OSLockNesting > 0) 							  /* See if called with scheduler locked ...       */
+    {                          
         *err = OS_ERR_PEND_LOCKED;                    /* ... can't PEND when locked                    */
         return ((void *)0);
     }
+    
     OS_ENTER_CRITICAL();
     msg = pevent->OSEventPtr;
-    if (msg != (void *)0) {                           /* See if there is already a message             */
+  	// 可获得邮箱消息?
+    if (msg != (void *)0) 							  /* See if there is already a message             */
+    {    
+    	// 清空邮箱
         pevent->OSEventPtr = (void *)0;               /* Clear the mailbox                             */
         OS_EXIT_CRITICAL();
         *err = OS_NO_ERR;
+        // 返回
         return (msg);                                 /* Return the message received (or NULL)         */
     }
+    
+    // 如果获取不到邮箱信息，任务会挂起
+    // 更新任务状态标志
     OSTCBCur->OSTCBStat  |= OS_STAT_MBOX;             /* Message not available, task will pend         */
+	// 延时等待最大时间未到
     OSTCBCur->OSTCBPendTO = OS_FALSE;
+    // 设置延时等待最大时间
     OSTCBCur->OSTCBDly    = timeout;                  /* Load timeout in TCB                           */
+	// 将任务添加到事件控制块的等待任务表
     OS_EventTaskWait(pevent);                         /* Suspend task until event or timeout occurs    */
     OS_EXIT_CRITICAL();
+
+	// 找出优先级最高的任务并进行任务切换
     OS_Sched();                                       /* Find next highest priority task ready to run  */
+
+    // 当邮箱有效或者等待时间到后，
+    // 并且调用OSMboxPend()函数的任务再一次成为最高优先级任务,
+    // 就会回到这里继续执行
     OS_ENTER_CRITICAL();
-    if (OSTCBCur->OSTCBPendTO == OS_TRUE) {           /* See if we were given the message              */
+    // 延时等待最大时间到了?
+    if (OSTCBCur->OSTCBPendTO == OS_TRUE)  			  /* See if we were given the message              */
+    {          
+    	// 由于等待超时而将任务置为就绪态。
         OS_EventTO(pevent);                           /* Timed out, Make task ready                    */
         OS_EXIT_CRITICAL();
         *err = OS_TIMEOUT;                            /* Indicate that a timeout occured               */
         return ((void *)0);                           /* Return a NULL message                         */
     }
+    // 邮箱可被获得:
+    // 获得邮箱消息
     msg                     = OSTCBCur->OSTCBMsg;
+	// 清空邮箱
     OSTCBCur->OSTCBMsg      = (void *)0;              /* Yes, clear message received                   */
+	// 更新任务状态标志
     OSTCBCur->OSTCBStat     = OS_STAT_RDY;
+	// 释放TCB里的ECB
     OSTCBCur->OSTCBEventPtr = (OS_EVENT *)0;          /* No longer waiting for event                   */
     OS_EXIT_CRITICAL();
     *err                    = OS_NO_ERR;
@@ -342,7 +387,7 @@ void  *OSMboxPend (OS_EVENT *pevent, INT16U timeout, INT8U *err)
 * Note(s)    : 1) HPT means Highest Priority Task
 *********************************************************************************************************
 */
-
+// 发送一个消息到邮箱中
 #if OS_MBOX_POST_EN > 0
 INT8U  OSMboxPost (OS_EVENT *pevent, void *msg)
 {
@@ -350,30 +395,43 @@ INT8U  OSMboxPost (OS_EVENT *pevent, void *msg)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (pevent == (OS_EVENT *)0) {                    /* Validate 'pevent'                             */
+    if (pevent == (OS_EVENT *)0) 					  /* Validate 'pevent'                             */
+    {                    
         return (OS_ERR_PEVENT_NULL);
     }
-    if (msg == (void *)0) {                           /* Make sure we are not posting a NULL pointer   */
+    if (msg == (void *)0) 							  /* Make sure we are not posting a NULL pointer   */
+    {                           
         return (OS_ERR_POST_NULL_PTR);
     }
 #endif
-    if (pevent->OSEventType != OS_EVENT_TYPE_MBOX) {  /* Validate event block type                     */
+	// 事件类型是邮箱?
+    if (pevent->OSEventType != OS_EVENT_TYPE_MBOX) 	  /* Validate event block type                     */
+    {  
         return (OS_ERR_EVENT_TYPE);
     }
+
     OS_ENTER_CRITICAL();
-    if (pevent->OSEventGrp != 0) {                        /* See if any task pending on mailbox        */
+	// 有任务正在等待该邮箱?
+    if (pevent->OSEventGrp != 0) 					  /* See if any task pending on mailbox        */
+    {        
+	    // 使最高优先级任务进入就绪态。
         (void)OS_EventTaskRdy(pevent, msg, OS_STAT_MBOX); /* Ready HPT waiting on event                */
         OS_EXIT_CRITICAL();
+		// 找出优先级最高的任务并进行任务切换
         OS_Sched();                                   /* Find highest priority task ready to run       */
         return (OS_NO_ERR);
     }
-    if (pevent->OSEventPtr != (void *)0) {            /* Make sure mailbox doesn't already have a msg  */
+    
+    // 没有任务在等待信号量:
+    // 邮箱不是空的?
+    if (pevent->OSEventPtr != (void *)0) 			  /* Make sure mailbox doesn't already have a msg  */
+    {            
         OS_EXIT_CRITICAL();
         return (OS_MBOX_FULL);
     }
+
+    // 将消息放进邮箱
     pevent->OSEventPtr = msg;                         /* Place message in mailbox                      */
     OS_EXIT_CRITICAL();
     return (OS_NO_ERR);
@@ -435,9 +493,13 @@ INT8U  OSMboxPostOpt (OS_EVENT *pevent, void *msg, INT8U opt)
     if (pevent->OSEventGrp != 0) {                    /* See if any task pending on mailbox            */
         if ((opt & OS_POST_OPT_BROADCAST) != 0x00) {  /* Do we need to post msg to ALL waiting tasks ? */
             while (pevent->OSEventGrp != 0) {         /* Yes, Post to ALL tasks waiting on mailbox     */
+            	// 从等待列表中找出使最高优先级任务（Highest Priority Task – HPT），并将其置于就绪态。
                 (void)OS_EventTaskRdy(pevent, msg, OS_STAT_MBOX);
             }
-        } else {
+        } 
+        else 
+        {
+        	// 从等待列表中找出使最高优先级任务（Highest Priority Task – HPT），并将其置于就绪态。
             (void)OS_EventTaskRdy(pevent, msg, OS_STAT_MBOX);  /* No,  Post to HPT waiting on mbox     */
         }
         OS_EXIT_CRITICAL();
@@ -474,7 +536,7 @@ INT8U  OSMboxPostOpt (OS_EVENT *pevent, void *msg, INT8U opt)
 *              OS_ERR_PDATA_NULL   If 'p_mbox_data' is a NULL pointer
 *********************************************************************************************************
 */
-
+// 查询一个邮箱的状态
 #if OS_MBOX_QUERY_EN > 0
 INT8U  OSMboxQuery (OS_EVENT *pevent, OS_MBOX_DATA *p_mbox_data)
 {
@@ -490,26 +552,33 @@ INT8U  OSMboxQuery (OS_EVENT *pevent, OS_MBOX_DATA *p_mbox_data)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (pevent == (OS_EVENT *)0) {                         /* Validate 'pevent'                        */
+    if (pevent == (OS_EVENT *)0)  						   /* Validate 'pevent'                        */
+    {                        
         return (OS_ERR_PEVENT_NULL);
     }
-    if (p_mbox_data == (OS_MBOX_DATA *)0) {                /* Validate 'p_mbox_data'                   */
+    if (p_mbox_data == (OS_MBOX_DATA *)0) 				   /* Validate 'p_mbox_data'                   */
+    {                
         return (OS_ERR_PDATA_NULL);
     }
 #endif
-    if (pevent->OSEventType != OS_EVENT_TYPE_MBOX) {       /* Validate event block type                */
+	// 事件类型是邮箱?
+    if (pevent->OSEventType != OS_EVENT_TYPE_MBOX) 		   /* Validate event block type                */
+    {       
         return (OS_ERR_EVENT_TYPE);
     }
+    
     OS_ENTER_CRITICAL();
+    // 获得邮箱的状态,包括:
+    // 等待任务表
     p_mbox_data->OSEventGrp = pevent->OSEventGrp;          /* Copy message mailbox wait list           */
     psrc                    = &pevent->OSEventTbl[0];
     pdest                   = &p_mbox_data->OSEventTbl[0];
-    for (i = 0; i < OS_EVENT_TBL_SIZE; i++) {
+    for (i = 0; i < OS_EVENT_TBL_SIZE; i++)
+    {
         *pdest++ = *psrc++;
     }
+    // 邮箱消息
     p_mbox_data->OSMsg = pevent->OSEventPtr;               /* Get message from mailbox                 */
     OS_EXIT_CRITICAL();
     return (OS_NO_ERR);

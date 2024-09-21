@@ -48,6 +48,10 @@
 *********************************************************************************************************
 */
 
+// 建立一个内存分区.
+// addr:内存起始地址
+// nblks:内存块数目
+// blksize:每个内存块的大小
 OS_MEM  *OSMemCreate (void *addr, INT32U nblks, INT32U blksize, INT8U *err)
 {
     OS_MEM    *pmem;
@@ -58,55 +62,78 @@ OS_MEM  *OSMemCreate (void *addr, INT32U nblks, INT32U blksize, INT8U *err)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0              
-    if (err == (INT8U *)0) {                          /* Validate 'err'                                */
+    if (err == (INT8U *)0)  						  /* Validate 'err'                                */
+    {                         
         return ((OS_MEM *)0);
     }
-    if (addr == (void *)0) {                          /* Must pass a valid address for the memory part.*/
+    if (addr == (void *)0)							  /* Must pass a valid address for the memory part.*/
+    {                          
         *err = OS_MEM_INVALID_ADDR;
         return ((OS_MEM *)0);
     }
-    if (((INT32U)addr & (sizeof(void *) - 1)) != 0){  /* Must be pointer size aligned                  */
+    // 地址对齐
+    if (((INT32U)addr & (sizeof(void *) - 1)) != 0)/* Must be pointer size aligned                  */
+    {  
         *err = OS_MEM_INVALID_ADDR;
         return ((OS_MEM *)0);
     }
-    if (nblks < 2) {                                  /* Must have at least 2 blocks per partition     */
+    // 每个内存分区至少含有两个内存块
+    if (nblks < 2) 									  /* Must have at least 2 blocks per partition     */
+    {                                  
         *err = OS_MEM_INVALID_BLKS;
         return ((OS_MEM *)0);
     }
-    if (blksize < sizeof(void *)) {                   /* Must contain space for at least a pointer     */
+    // 每个内存块至少为一个指针的大小
+    if (blksize < sizeof(void *)) 					  /* Must contain space for at least a pointer     */
+    {                   
         *err = OS_MEM_INVALID_SIZE;
         return ((OS_MEM *)0);
     }
-    if ((blksize % sizeof(void *)) != 0) {            /* Must contain space for an integral number ... */
+    // 内存块的大小是4的倍数
+    if ((blksize % sizeof(void *)) != 0) 			  /* Must contain space for an integral number ... */
+    {            
         *err = OS_MEM_INVALID_SIZE;                   /* ... of pointer sized items                    */
         return ((OS_MEM *)0);
     }
 #endif
     OS_ENTER_CRITICAL();
+    // 获得空闲的内存控制块
     pmem = OSMemFreeList;                             /* Get next free memory partition                */
-    if (OSMemFreeList != (OS_MEM *)0) {               /* See if pool of free partitions was empty      */
+    if (OSMemFreeList != (OS_MEM *)0)				  /* See if pool of free partitions was empty      */
+    {               
+    	// 更新OSMemFreeList
         OSMemFreeList = (OS_MEM *)OSMemFreeList->OSMemFreeList;
     }
     OS_EXIT_CRITICAL();
-    if (pmem == (OS_MEM *)0) {                        /* See if we have a memory partition             */
+    if (pmem == (OS_MEM *)0) 						  /* See if we have a memory partition             */
+    {                        
         *err = OS_MEM_INVALID_PART;
         return ((OS_MEM *)0);
     }
+	// 内存分区里的所有内存块被链接成一个单向的链表
     plink = (void **)addr;                            /* Create linked list of free memory blocks      */
     pblk  = (INT8U *)((INT32U)addr + blksize);
-    for (i = 0; i < (nblks - 1); i++) {
+    for (i = 0; i < (nblks - 1); i++) 
+    {
+    	// 每个内存块的0地址都存放着下一个内存的
+    	// 首地址
        *plink = (void *)pblk;                         /* Save pointer to NEXT block in CURRENT block   */
         plink = (void **)pblk;                        /* Position to  NEXT      block                  */
         pblk  = (INT8U *)((INT32U)pblk + blksize);    /* Point to the FOLLOWING block                  */
     }
     *plink              = (void *)0;                  /* Last memory block points to NULL              */
+
+	// 初始化内存控制块,包括:
+	// 内存分区起始地址
     pmem->OSMemAddr     = addr;                       /* Store start address of memory partition       */
+	// 下一个空闲内存控制块
     pmem->OSMemFreeList = addr;                       /* Initialize pointer to pool of free blocks     */
+	// 内存分区中空闲的内存块的数量
     pmem->OSMemNFree    = nblks;                      /* Store number of free blocks in MCB            */
+	// 内存分区中内存块数量
     pmem->OSMemNBlks    = nblks;
+	// 内存块的大小
     pmem->OSMemBlkSize  = blksize;                    /* Store block size of each memory blocks        */
     *err                = OS_NO_ERR;
     return (pmem);
@@ -131,7 +158,7 @@ OS_MEM  *OSMemCreate (void *addr, INT32U nblks, INT32U blksize, INT8U *err)
 *               A pointer to NULL if an error is detected
 *********************************************************************************************************
 */
-
+// 分配一个内存块
 void  *OSMemGet (OS_MEM *pmem, INT8U *err)
 {
     void      *pblk;
@@ -139,24 +166,30 @@ void  *OSMemGet (OS_MEM *pmem, INT8U *err)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (err == (INT8U *)0) {                          /* Validate 'err'                                */
+    if (err == (INT8U *)0)  						  /* Validate 'err'                                */
+    {                         
         return ((void *)0);
     }
-    if (pmem == (OS_MEM *)0) {                        /* Must point to a valid memory partition        */
+    if (pmem == (OS_MEM *)0) 						  /* Must point to a valid memory partition        */
+    {                        
         *err = OS_MEM_INVALID_PMEM;
         return ((void *)0);
     }
 #endif
     OS_ENTER_CRITICAL();
-    if (pmem->OSMemNFree > 0) {                       /* See if there are any free memory blocks       */
+    // 空闲的内存块的数量大于0
+    if (pmem->OSMemNFree > 0)						  /* See if there are any free memory blocks       */
+    {               
+    	// 获得内存块
         pblk                = pmem->OSMemFreeList;    /* Yes, point to next free memory block          */
+		// 更新内存控制块里的OSMemFreeList
         pmem->OSMemFreeList = *(void **)pblk;         /*      Adjust pointer to new free list          */
+		// 空闲的内存块数目减一
         pmem->OSMemNFree--;                           /*      One less memory block in this partition  */
         OS_EXIT_CRITICAL();
         *err = OS_NO_ERR;                             /*      No error                                 */
+		// 返回内存块
         return (pblk);                                /*      Return memory block to caller            */
     }
     OS_EXIT_CRITICAL();
@@ -297,30 +330,36 @@ void  OSMemNameSet (OS_MEM *pmem, INT8U *pname, INT8U *err)
 *               OS_MEM_INVALID_PBLK  if you passed a NULL pointer for the block to release.
 *********************************************************************************************************
 */
-
+// 释放一个内存块.
+// pmem:内存控制块
+// pblk:内存块
 INT8U  OSMemPut (OS_MEM *pmem, void *pblk)
 {
 #if OS_CRITICAL_METHOD == 3                      /* Allocate storage for CPU status register           */
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (pmem == (OS_MEM *)0) {                   /* Must point to a valid memory partition             */
+    if (pmem == (OS_MEM *)0) 					 /* Must point to a valid memory partition             */
+    {                   
         return (OS_MEM_INVALID_PMEM);
     }
-    if (pblk == (void *)0) {                     /* Must release a valid block                         */
+    if (pblk == (void *)0) 						 /* Must release a valid block                         */
+    {                     
         return (OS_MEM_INVALID_PBLK);
     }
 #endif
     OS_ENTER_CRITICAL();
-    if (pmem->OSMemNFree >= pmem->OSMemNBlks) {  /* Make sure all blocks not already returned          */
+    // 内存分区中内存块已经全部回收?
+    if (pmem->OSMemNFree >= pmem->OSMemNBlks) 	 /* Make sure all blocks not already returned          */
+    {  
         OS_EXIT_CRITICAL();
         return (OS_MEM_FULL);
     }
+    // 将内存块插入到空闲内存块表里
     *(void **)pblk      = pmem->OSMemFreeList;   /* Insert released block into free block list         */
     pmem->OSMemFreeList = pblk;
+	// 空闲的内存块的数量加一
     pmem->OSMemNFree++;                          /* One more memory block in this partition            */
     OS_EXIT_CRITICAL();
     return (OS_NO_ERR);                          /* Notify caller that memory block was released       */
@@ -343,7 +382,7 @@ INT8U  OSMemPut (OS_MEM *pmem, void *pblk)
 *               OS_MEM_INVALID_PDATA if you passed a NULL pointer to the data recipient.
 *********************************************************************************************************
 */
-
+// 查询一个内存分区的状态
 #if OS_MEM_QUERY_EN > 0
 INT8U  OSMemQuery (OS_MEM *pmem, OS_MEM_DATA *p_mem_data)
 {
@@ -351,13 +390,13 @@ INT8U  OSMemQuery (OS_MEM *pmem, OS_MEM_DATA *p_mem_data)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (pmem == (OS_MEM *)0) {                   /* Must point to a valid memory partition             */
+    if (pmem == (OS_MEM *)0)  					/* Must point to a valid memory partition             */
+    {                  
         return (OS_MEM_INVALID_PMEM);
     }
-    if (p_mem_data == (OS_MEM_DATA *)0) {        /* Must release a valid storage area for the data     */
+    if (p_mem_data == (OS_MEM_DATA *)0)			/* Must release a valid storage area for the data     */
+    {        
         return (OS_MEM_INVALID_PDATA);
     }
 #endif
@@ -387,7 +426,7 @@ INT8U  OSMemQuery (OS_MEM *pmem, OS_MEM_DATA *p_mem_data)
 * Note(s)    : This function is INTERNAL to uC/OS-II and your application should not call it.
 *********************************************************************************************************
 */
-
+// 初始化内存管理器,主要是建立内存控制块链表
 void  OS_MemInit (void)
 {
 #if OS_MAX_MEM_PART == 1
@@ -402,11 +441,13 @@ void  OS_MemInit (void)
 #if OS_MAX_MEM_PART >= 2
     OS_MEM  *pmem;
     INT16U   i;
-
-
+	// 清空内存
     OS_MemClr((INT8U *)&OSMemTbl[0], sizeof(OSMemTbl));   /* Clear the memory partition table          */
+	// 指向内存分区块
     pmem = &OSMemTbl[0];                                  /* Point to memory control block (MCB)       */
-    for (i = 0; i < (OS_MAX_MEM_PART - 1); i++) {         /* Init. list of free memory partitions      */
+	// 建立内存分区链表
+    for (i = 0; i < (OS_MAX_MEM_PART - 1); i++)  		  /* Init. list of free memory partitions      */
+    {        
         pmem->OSMemFreeList = (void *)&OSMemTbl[i+1];     /* Chain list of free partitions             */
 #if OS_MEM_NAME_SIZE > 1
         pmem->OSMemName[0]  = '?';                        /* Unknown name                              */
@@ -419,7 +460,7 @@ void  OS_MemInit (void)
     pmem->OSMemName[0]  = '?';                            /* Unknown name                              */
     pmem->OSMemName[1]  = OS_ASCII_NUL;
 #endif
-
+	// OSMemFreeList指向第一个空闲的内存分区块
     OSMemFreeList       = &OSMemTbl[0];                   /* Point to beginning of free list           */
 #endif
 }

@@ -869,7 +869,7 @@ static  void  OSTmr_InitTask (void)
     INT8U  err;
 #endif
 
-
+	Uart_Printf("OSTmr_InitTask");
 #if OS_TASK_CREATE_EXT_EN > 0
     #if OS_STK_GROWTH == 1
     (void)OSTaskCreateExt(OSTmr_Task,

@@ -23,6 +23,7 @@
                                        /* --------------------- TASK STACK SIZE ----------------------   */
 #define OS_TASK_TMR_STK_SIZE    128    /* Timer      task stack size (# of OS_STK wide entries)          */
 #define OS_TASK_STAT_STK_SIZE   128    /* Statistics task stack size (# of OS_STK wide entries)          */
+// 空闲任务的栈容量
 #define OS_TASK_IDLE_STK_SIZE   128    /* Idle       task stack size (# of OS_STK wide entries)          */
 
 
@@ -36,20 +37,21 @@
 
 #define OS_LOWEST_PRIO           30    /* Defines the lowest priority that can be assigned ...           */
                                        /* ... MUST NEVER be higher than 254!                             */
-
+// 事件控制块的最大数目
 #define OS_MAX_EVENTS            20    /* Max. number of event control blocks in your application        */
 #define OS_MAX_FLAGS             10    /* Max. number of Event Flag Groups    in your application        */
+// 内存分区数目
 #define OS_MAX_MEM_PART          25    /* Max. number of memory partitions                               */
 #define OS_MAX_QS                25    /* Max. number of queue control blocks in your application        */
-#define OS_MAX_TASKS             20    /* Max. number of tasks in your application, MUST be >= 2         */
-
+// 用户需要的任务数 		        
+#define OS_MAX_TASKS             20    /* Max. number of tasks in your application, MUST be >= 2  		 */
 #define OS_SCHED_LOCK_EN          1    /*     Include code for OSSchedLock() and OSSchedUnlock()         */
-
-#define OS_TASK_STAT_EN           0    /* Enable (1) or Disable(0) the statistics task                   */
+// 是否创建统计任务TaskStat				  
+#define OS_TASK_STAT_EN           0    /* Enable (1) or Disable(0) the statistics task  				 */
 #define OS_TASK_STAT_STK_CHK_EN   1    /* Check task stacks from statistic task                          */
 
 #define OS_TICK_STEP_EN           0    /* Enable tick stepping feature for uC/OS-View                    */
-#define OS_TICKS_PER_SEC        100    /* Set the number of ticks in one second                          */
+#define OS_TICKS_PER_SEC        200    /* Set the number of ticks in one second                          */
 
 
                                        /* ----------------------- EVENT FLAGS ------------------------   */
@@ -71,9 +73,10 @@
 #define OS_MBOX_QUERY_EN          1    /*     Include code for OSMboxQuery()                             */
 
 
-                                       /* --------------------- MEMORY MANAGEMENT --------------------   */
+// 使能内存管理		                   /* --------------------- MEMORY MANAGEMENT --------------------   */
 #define OS_MEM_EN                 1    /* Enable (1) or Disable (0) code generation for MEMORY MANAGER   */
 #define OS_MEM_QUERY_EN           1    /*     Include code for OSMemQuery()                              */
+// 内存分区名字的长度
 #define OS_MEM_NAME_SIZE         16    /*     Determine the size of a memory partition name              */
 
 

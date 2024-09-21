@@ -47,7 +47,8 @@ void timer_init(void)
 	intc_enable(NUM_TIMER0);
 	
 	// 设置timer0
-	timer_setup(0,65,4,62500,0);
+	//timer_setup(0,65,4,62500,0); //1s 一次触发
+	timer_setup(0,65,4,625,0); //10ms一次触发
 }
 
 // 停止所有timer
@@ -61,25 +62,29 @@ void pwm_stopall(void)
 void irs_timer()
 {
 	unsigned long uTmp;
-	unsigned long temp;
-	
+	//unsigned long temp;
+/*	
 	__asm__ __volatile__(
 	   "MRS %0, CPSR\n"
 		:"=r"(temp)
 		:
 		:"memory", "cc"
 	);
-//	printf("irq_timer cpsr=0x%x\r\n",temp);
-
+	printf("irq_timer cpsr=0x%x\r\n",temp);
+*/
 	//清timer0的中断状态寄存器
 	uTmp = TINT_CSTAT;
 	TINT_CSTAT = uTmp;      
 	
 	// 打印中断发生次数
-	printf("Timer0IntCounter = %d \r\n",counter++);
+	//printf("Timer0IntCounter = %d \r\n",counter++);
 	
 	// vic相关的中断清除
 	intc_clearvectaddr();
+
+	// UCOS timer tick
+	OSTimeTick();
+
 }
 
 void timer_setup(unsigned long utimer,unsigned long uprescaler,unsigned long udivider,unsigned long utcntb,unsigned long utcmpb)

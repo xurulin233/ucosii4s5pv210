@@ -6,6 +6,7 @@
 .extern pabort_handle
 .extern dabort_handle
 .extern reserved_handle
+.extern OS_CPU_IRQ_ISR
 
 .global _start
 .global _interrupt_vector_table
@@ -19,7 +20,7 @@ _interrupt_vector_table:
 	ldr	pc, =pabort_handle
 	ldr	pc, =dabort_handle
 	ldr	pc, =reserved_handle
-	ldr	pc, =_irq_handle
+	ldr	pc, =OS_CPU_IRQ_ISR
 	ldr	pc, =fiq_handle	
 
 _reset_handle:

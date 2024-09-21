@@ -38,7 +38,7 @@
 *              OS_TASK_NOT_EXIST  if the task is assigned to a Mutex PIP.
 *********************************************************************************************************
 */
-
+// 改变任务优先级
 #if OS_TASK_CHANGE_PRIO_EN > 0
 INT8U  OSTaskChangePrio (INT8U oldprio, INT8U newprio)
 {
@@ -60,35 +60,47 @@ INT8U  OSTaskChangePrio (INT8U oldprio, INT8U newprio)
     OS_CPU_SR    cpu_sr = 0;                                    /* Storage for CPU status register     */
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (oldprio >= OS_LOWEST_PRIO) {
-        if (oldprio != OS_PRIO_SELF) {
+	// 不允许改变空闲任务的优先级
+    if (oldprio >= OS_LOWEST_PRIO) 
+    {
+        if (oldprio != OS_PRIO_SELF) 
+        {
             return (OS_PRIO_INVALID);
         }
     }
-    if (newprio >= OS_LOWEST_PRIO) {
+    // 检查新优先级的有效性
+    if (newprio >= OS_LOWEST_PRIO) 
+    {
         return (OS_PRIO_INVALID);
     }
 #endif
+
     OS_ENTER_CRITICAL();
-    if (OSTCBPrioTbl[newprio] != (OS_TCB *)0) {                 /* New priority must not already exist */
+    // 新优先级是否可用
+    if (OSTCBPrioTbl[newprio] != (OS_TCB *)0)					/* New priority must not already exist */
+    {                 
         OS_EXIT_CRITICAL();
         return (OS_PRIO_EXIST);
     }
-    if (oldprio == OS_PRIO_SELF) {                              /* See if changing self                */
+    // 是否任务自己要求改变自己的优先级
+    if (oldprio == OS_PRIO_SELF) 								/* See if changing self                */
+    {                              
         oldprio = OSTCBCur->OSTCBPrio;                          /* Yes, get priority                   */
     }
+    // 获得TCB
     ptcb = OSTCBPrioTbl[oldprio];
-    if (ptcb == (OS_TCB *)0) {                                  /* Does task to change exist?          */
+    if (ptcb == (OS_TCB *)0) 									/* Does task to change exist?          */
+    {                                  
         OS_EXIT_CRITICAL();                                     /* No, can't change its priority!      */
         return (OS_PRIO_ERR);
     }
-    if (ptcb == (OS_TCB *)1) {                                  /* Is task assigned to Mutex           */
+    if (ptcb == (OS_TCB *)1) 									/* Is task assigned to Mutex           */
+    {                                  
         OS_EXIT_CRITICAL();                                     /* No, can't change its priority!      */
         return (OS_TASK_NOT_EXIST);
     }
+    
 #if OS_LOWEST_PRIO <= 63
     y                     = (INT8U)(newprio >> 3);              /* Yes, compute new TCB fields         */
     x                     = (INT8U)(newprio & 0x07);
@@ -101,35 +113,51 @@ INT8U  OSTaskChangePrio (INT8U oldprio, INT8U newprio)
     bitx                  = (INT16U)(1 << x);
 #endif
 
+	// 调整OSTCBPrioTbl
     OSTCBPrioTbl[oldprio] = (OS_TCB *)0;                        /* Remove TCB from old priority        */
     OSTCBPrioTbl[newprio] = ptcb;                               /* Place pointer to TCB @ new priority */
     y_old                 = ptcb->OSTCBY;
-    if ((OSRdyTbl[y_old] & ptcb->OSTCBBitX) != 0) {             /* If task is ready make it not        */
+	// 如果任务已经就绪
+    if ((OSRdyTbl[y_old] & ptcb->OSTCBBitX) != 0)				/* If task is ready make it not        */
+    {             
+    	// 在旧优先级下将任务从就绪表中移除
         OSRdyTbl[y_old] &= ~ptcb->OSTCBBitX;
-        if (OSRdyTbl[y_old] == 0) {
+        if (OSRdyTbl[y_old] == 0) 
+        {
             OSRdyGrp &= ~ptcb->OSTCBBitY;
         }
+        // 在新优先级下将任务添加到就绪表
         OSRdyGrp    |= bity;                                    /* Make new priority ready to run      */
         OSRdyTbl[y] |= bitx;
 #if OS_EVENT_EN
-    } else {                                                    /* Task was not ready ...              */
+    }
+    // 如果任务未就绪
+    else 														/* Task was not ready ...              */
+    {                                                    		
         pevent = ptcb->OSTCBEventPtr;
-        if (pevent != (OS_EVENT *)0) {                          /* ... remove from event wait list     */
+        if (pevent != (OS_EVENT *)0) 							/* ... remove from event wait list     */
+        {      
+        	// 在旧优先级下将任务从事件控制块的等待队列中移除
             pevent->OSEventTbl[y_old] &= ~ptcb->OSTCBBitX;
-            if (pevent->OSEventTbl[y_old] == 0) {
+            if (pevent->OSEventTbl[y_old] == 0) 
+            {
                 pevent->OSEventGrp &= ~ptcb->OSTCBBitY;
             }
+            // 在新的优先级下将事件插入到等待队列中
             pevent->OSEventGrp    |= bity;                      /* Add new priority to wait list       */
             pevent->OSEventTbl[y] |= bitx;
         }
 #endif
     }
+    // 设置新的优先级
     ptcb->OSTCBPrio = newprio;                                  /* Set new task priority               */
     ptcb->OSTCBY    = y;
     ptcb->OSTCBX    = x;
     ptcb->OSTCBBitY = bity;
     ptcb->OSTCBBitX = bitx;
     OS_EXIT_CRITICAL();
+    
+    // 找出优先级最高的任务并进行任务切换
     OS_Sched();                                                 /* Run highest priority task ready     */
     return (OS_NO_ERR);
 }
@@ -184,30 +212,44 @@ INT8U  OSTaskCreate (void (*task)(void *p_arg), void *p_arg, OS_STK *ptos, INT8U
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (prio > OS_LOWEST_PRIO) {             /* Make sure priority is within allowable range           */
+	// 检查优先级是否有效
+    if (prio > OS_LOWEST_PRIO)				 /* Make sure priority is within allowable range           */
+    {             
         return (OS_PRIO_INVALID);
     }
 #endif
+	// 关闭中断
     OS_ENTER_CRITICAL();
-    if (OSIntNesting > 0) {                  /* Make sure we don't create the task from within an ISR  */
+    if (OSIntNesting > 0) 					 /* Make sure we don't create the task from within an ISR  */
+    {                  
         OS_EXIT_CRITICAL();
         return (OS_ERR_TASK_CREATE_ISR);
     }
-    if (OSTCBPrioTbl[prio] == (OS_TCB *)0) { /* Make sure task doesn't already exist at this priority  */
+    // 检查优先级是否被占用
+    if (OSTCBPrioTbl[prio] == (OS_TCB *)0) 	 /* Make sure task doesn't already exist at this priority  */
+    { 
+    	// 赶紧占用TCB
         OSTCBPrioTbl[prio] = (OS_TCB *)1;    /* Reserve the priority to prevent others from doing ...  */
                                              /* ... the same thing until task is created.              */
+        // 打开中断
         OS_EXIT_CRITICAL();
+        // 初始化任务堆栈       	
         psp = OSTaskStkInit(task, p_arg, ptos, 0);              /* Initialize the task's stack         */
-        err = OS_TCBInit(prio, psp, (OS_STK *)0, 0, 0, (void *)0, 0);
-        if (err == OS_NO_ERR) {
-            if (OSRunning == OS_TRUE) {      /* Find highest priority task if multitasking has started */
+        // 初始化TCB
+        err = OS_TCBInit(prio, psp, (OS_STK *)0, 0, 0, (void *)0, 0);		
+        if (err == OS_NO_ERR) 
+        {
+            if (OSRunning == OS_TRUE) 		 /* Find highest priority task if multitasking has started */
+            {      
+                // 找出优先级最高的任务并进行任务切换
                 OS_Sched();
             }
-        } else {
+        } 
+        else 
+        {
             OS_ENTER_CRITICAL();
+            // 出错则释放掉被抢占的TCB
             OSTCBPrioTbl[prio] = (OS_TCB *)0;/* Make this priority available to others                 */
             OS_EXIT_CRITICAL();
         }
@@ -305,33 +347,45 @@ INT8U  OSTaskCreateExt (void   (*task)(void *p_arg),
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (prio > OS_LOWEST_PRIO) {             /* Make sure priority is within allowable range           */
+	// 检查优先级是否有效
+    if (prio > OS_LOWEST_PRIO) 				 /* Make sure priority is within allowable range           */
+    {             
         return (OS_PRIO_INVALID);
     }
 #endif
+
     OS_ENTER_CRITICAL();
-    if (OSIntNesting > 0) {                  /* Make sure we don't create the task from within an ISR  */
+    if (OSIntNesting > 0) 					 /* Make sure we don't create the task from within an ISR  */
+    {                  
         OS_EXIT_CRITICAL();
         return (OS_ERR_TASK_CREATE_ISR);
     }
-    if (OSTCBPrioTbl[prio] == (OS_TCB *)0) { /* Make sure task doesn't already exist at this priority  */
+    // 检查优先级是否被占用
+    if (OSTCBPrioTbl[prio] == (OS_TCB *)0) 	 /* Make sure task doesn't already exist at this priority  */
+    { 
+    	// 赶紧占用TCB
         OSTCBPrioTbl[prio] = (OS_TCB *)1;    /* Reserve the priority to prevent others from doing ...  */
                                              /* ... the same thing until task is created.              */
         OS_EXIT_CRITICAL();
-
+		// 将栈清空
         OS_TaskStkClr(pbos, stk_size, opt);                    /* Clear the task stack (if needed)     */
-
+		// 初始化任务堆栈 
         psp = OSTaskStkInit(task, p_arg, ptos, opt);           /* Initialize the task's stack          */
+        // 初始化TCB
         err = OS_TCBInit(prio, psp, pbos, id, stk_size, pext, opt);
-        if (err == OS_NO_ERR) {
-            if (OSRunning == OS_TRUE) {                        /* Find HPT if multitasking has started */
+        if (err == OS_NO_ERR) 
+        {
+            if (OSRunning == OS_TRUE) 						   /* Find HPT if multitasking has started */
+            {     
+            	// 找出优先级最高的任务并进行任务切换
                 OS_Sched();
             }
-        } else {
+        } 
+        else 
+        {
             OS_ENTER_CRITICAL();
+            // 出错则释放掉被抢占的TCB
             OSTCBPrioTbl[prio] = (OS_TCB *)0;                  /* Make this priority avail. to others  */
             OS_EXIT_CRITICAL();
         }
@@ -377,7 +431,7 @@ INT8U  OSTaskCreateExt (void   (*task)(void *p_arg),
 *                 being deleted.  The rest of the deletion would thus be able to be completed.
 *********************************************************************************************************
 */
-/*$PAGE*/
+// 删除任务
 #if OS_TASK_DEL_EN > 0
 INT8U  OSTaskDel (INT8U prio)
 {
@@ -393,87 +447,126 @@ INT8U  OSTaskDel (INT8U prio)
     OS_CPU_SR     cpu_sr = 0;
 #endif
 
-
-
-    if (OSIntNesting > 0) {                                     /* See if trying to delete from ISR    */
+	// 不允许中断时删除任务
+    if (OSIntNesting > 0) 
+    {                                     		 /* See if trying to delete from ISR    */
         return (OS_TASK_DEL_ISR);
     }
-    if (prio == OS_TASK_IDLE_PRIO) {                            /* Not allowed to delete idle task     */
+    // 不允许删除空闲任务
+    if (prio == OS_TASK_IDLE_PRIO) 				 /* Not allowed to delete idle task     */
+    {                            
         return (OS_TASK_DEL_IDLE);
     }
 #if OS_ARG_CHK_EN > 0
-    if (prio >= OS_LOWEST_PRIO) {                               /* Task priority valid ?               */
-        if (prio != OS_PRIO_SELF) {
+	// 检查待删除任务的优先级是否有效
+    if (prio >= OS_LOWEST_PRIO)					 /* Task priority valid ?               */
+    {                               
+        if (prio != OS_PRIO_SELF) 
+        {
             return (OS_PRIO_INVALID);
         }
     }
 #endif
 
     OS_ENTER_CRITICAL();
-    if (prio == OS_PRIO_SELF) {                                 /* See if requesting to delete self    */
-        prio = OSTCBCur->OSTCBPrio;                             /* Set priority to delete to current   */
+    // 是否是任务自己要求删除自己
+    if (prio == OS_PRIO_SELF) 					  /* See if requesting to delete self    */
+    {                                 
+        prio = OSTCBCur->OSTCBPrio;               /* Set priority to delete to current   */
     }
+    // 获得TCB
     ptcb = OSTCBPrioTbl[prio];
-    if (ptcb == (OS_TCB *)0) {                                  /* Task to delete must exist           */
+    if (ptcb == (OS_TCB *)0) 					  /* Task to delete must exist           */
+    {                                  
         OS_EXIT_CRITICAL();
         return (OS_TASK_NOT_EXIST);
     }
-    if (ptcb == (OS_TCB *)1) {                                  /* Must not be assigned to Mutex       */
+    if (ptcb == (OS_TCB *)1)					  /* Must not be assigned to Mutex       */
+    {                                  
         OS_EXIT_CRITICAL();
         return (OS_TASK_DEL_ERR);
     }
+
+    // 从就绪表中移除
     y            =  ptcb->OSTCBY;
     OSRdyTbl[y] &= ~ptcb->OSTCBBitX;
-    if (OSRdyTbl[y] == 0) {                                     /* Make task not ready                 */
+    if (OSRdyTbl[y] == 0) 						  /* Make task not ready                 */
+    {                                     
         OSRdyGrp &= ~ptcb->OSTCBBitY;
     }
-    
+
+    // 移除
 #if OS_EVENT_EN
-    pevent = ptcb->OSTCBEventPtr;
-    if (pevent != (OS_EVENT *)0) {                              /* If task is waiting on event         */
+    pevent = ptcb->OSTCBEventPtr;	
+    if (pevent != (OS_EVENT *)0) 				  /* If task is waiting on event         */
+    {                              
         pevent->OSEventTbl[y] &= ~ptcb->OSTCBBitX;
-        if (pevent->OSEventTbl[y] == 0) {                       /* ... remove task from ...            */
-            pevent->OSEventGrp &= ~ptcb->OSTCBBitY;             /* ... event ctrl block                */
+        if (pevent->OSEventTbl[y] == 0) 		  /* ... remove task from ...            */
+        {                       
+            pevent->OSEventGrp &= ~ptcb->OSTCBBitY; /* ... event ctrl block              */
         }
     }
 #endif
 
+	// 移除
 #if (OS_VERSION >= 251) && (OS_FLAG_EN > 0) && (OS_MAX_FLAGS > 0)
     pnode = ptcb->OSTCBFlagNode;
-    if (pnode != (OS_FLAG_NODE *)0) {                           /* If task is waiting on event flag    */
-        OS_FlagUnlink(pnode);                                   /* Remove from wait list               */
+    if (pnode != (OS_FLAG_NODE *)0)			 	  /* If task is waiting on event flag    */
+    {                           
+        OS_FlagUnlink(pnode);                     /* Remove from wait list               */
     }
 #endif
 
+	// 为了防止中断或者其他任务调用OSTaskResume()使任务变成就绪?
+	// 见P4-16
     ptcb->OSTCBDly    = 0;                                      /* Prevent OSTimeTick() from updating  */
     ptcb->OSTCBStat   = OS_STAT_RDY;                            /* Prevent task from being resumed     */
     ptcb->OSTCBPendTO = OS_FALSE;
-    if (OSLockNesting < 255u) {                                 /* Make sure we don't context switch   */
+
+    // 如果切换到其他任务了，则再也返回不到本任务，
+    // 也无法进行任务删除的剩余工作，所以要禁止调度
+    if (OSLockNesting < 255u) 									/* Make sure we don't context switch   */
+    {                                 
         OSLockNesting++;
     }
     OS_EXIT_CRITICAL();                                         /* Enabling INT. ignores next instruc. */
+    // 该函数并不会进行任何实质性的工作,
+    // 这样做只是因为想确保处理器在中断允许的情况下至少执行一个指令。
     OS_Dummy();                                                 /* ... Dummy ensures that INTs will be */
     OS_ENTER_CRITICAL();                                        /* ... disabled HERE!                  */
-    if (OSLockNesting > 0) {                                    /* Remove context switch lock          */
+    // 重新允许调度
+    if (OSLockNesting > 0) 										/* Remove context switch lock          */
+    {                                   
         OSLockNesting--;
     }
+    // 调用钩子函数
     OSTaskDelHook(ptcb);                                        /* Call user defined hook              */
+    // 任务数目减一
     OSTaskCtr--;                                                /* One less task being managed         */
+    // 从TCB优先级链表中去掉TCB
     OSTCBPrioTbl[prio] = (OS_TCB *)0;                           /* Clear old priority entry            */
-    if (ptcb->OSTCBPrev == (OS_TCB *)0) {                       /* Remove from TCB chain               */
+    // 从已用TCB链表中去掉TCB
+    if (ptcb->OSTCBPrev == (OS_TCB *)0)							/* Remove from TCB chain               */
+    {                       
         ptcb->OSTCBNext->OSTCBPrev = (OS_TCB *)0;
         OSTCBList                  = ptcb->OSTCBNext;
-    } else {
+    } 
+    else 
+    {
         ptcb->OSTCBPrev->OSTCBNext = ptcb->OSTCBNext;
         ptcb->OSTCBNext->OSTCBPrev = ptcb->OSTCBPrev;
     }
+    // 将TCB返回给可用TCB链表
     ptcb->OSTCBNext   = OSTCBFreeList;                          /* Return TCB to free TCB list         */
     OSTCBFreeList     = ptcb;
+    
 #if OS_TASK_NAME_SIZE > 1
     ptcb->OSTCBTaskName[0] = '?';                               /* Unknown name                        */
     ptcb->OSTCBTaskName[1] = OS_ASCII_NUL;
 #endif
     OS_EXIT_CRITICAL();
+    // 因为任务删除过程中开过中断，有可能有更高级的任务就绪。
+    // 所以要找出优先级最高的任务并进行任务切换
     OS_Sched();                                                 /* Find new highest priority task      */
     return (OS_NO_ERR);
 }
@@ -534,35 +627,49 @@ INT8U  OSTaskDelReq (INT8U prio)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
-    if (prio == OS_TASK_IDLE_PRIO) {                            /* Not allowed to delete idle task     */
+	// 不允许删除空闲任务
+    if (prio == OS_TASK_IDLE_PRIO) 				 /* Not allowed to delete idle task     */
+    {                           
         return (OS_TASK_DEL_IDLE);
     }
+
+    // 优先级是否有效
 #if OS_ARG_CHK_EN > 0
-    if (prio >= OS_LOWEST_PRIO) {                               /* Task priority valid ?               */
-        if (prio != OS_PRIO_SELF) {
+    if (prio >= OS_LOWEST_PRIO) 				 /* Task priority valid ?               */
+    {                              
+        if (prio != OS_PRIO_SELF)
+        {
             return (OS_PRIO_INVALID);
         }
     }
 #endif
-    if (prio == OS_PRIO_SELF) {                                 /* See if a task is requesting to ...  */
-        OS_ENTER_CRITICAL();                                    /* ... this task to delete itself      */
-        stat = OSTCBCur->OSTCBDelReq;                           /* Return request status to caller     */
+
+	// 是否待删除任务自己调用OSTaskDelReq，是则返回删除标志；
+	// 否则后面的代码会给任务设置删除标志
+    if (prio == OS_PRIO_SELF) 					 /* See if a task is requesting to ...  */
+    {                                 
+        OS_ENTER_CRITICAL();                     /* ... this task to delete itself      */
+        stat = OSTCBCur->OSTCBDelReq;            /* Return request status to caller     */
         OS_EXIT_CRITICAL();
         return (stat);
     }
+    
     OS_ENTER_CRITICAL();
+    // 获得TCB
     ptcb = OSTCBPrioTbl[prio];
-    if (ptcb == (OS_TCB *)0) {                                  /* Task to delete must exist           */
+    if (ptcb == (OS_TCB *)0) 					 /* Task to delete must exist           */
+    {                                  
         OS_EXIT_CRITICAL();
-        return (OS_TASK_NOT_EXIST);                             /* Task must already be deleted        */
+        return (OS_TASK_NOT_EXIST);              /* Task must already be deleted        */
     }
-    if (ptcb == (OS_TCB *)1) {                                  /* Must NOT be assigned to a Mutex     */
+    if (ptcb == (OS_TCB *)1)					 /* Must NOT be assigned to a Mutex     */
+    {                                  
         OS_EXIT_CRITICAL();
         return (OS_TASK_DEL_ERR);
     }
-    ptcb->OSTCBDelReq = OS_TASK_DEL_REQ;                        /* Set flag indicating task to be DEL. */
+
+    // 设置任务删除标志
+    ptcb->OSTCBDelReq = OS_TASK_DEL_REQ;         /* Set flag indicating task to be DEL. */
     OS_EXIT_CRITICAL();
     return (OS_NO_ERR);
 }
@@ -736,7 +843,7 @@ void  OSTaskNameSet (INT8U prio, INT8U *pname, INT8U *err)
 *              OS_TASK_NOT_SUSPENDED    if the task to resume has not been suspended
 *********************************************************************************************************
 */
-
+// 恢复被无条件挂起的任务
 #if OS_TASK_SUSPEND_EN > 0
 INT8U  OSTaskResume (INT8U prio)
 {
@@ -745,35 +852,53 @@ INT8U  OSTaskResume (INT8U prio)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (prio >= OS_LOWEST_PRIO) {                             /* Make sure task priority is valid      */
+	// 不允许恢复空闲任务
+    if (prio >= OS_LOWEST_PRIO) 							  /* Make sure task priority is valid      */
+    {                             
         return (OS_PRIO_INVALID);
     }
 #endif
+
     OS_ENTER_CRITICAL();
+    // 获得TCB
     ptcb = OSTCBPrioTbl[prio];
-    if (ptcb == (OS_TCB *)0) {                                /* Task to suspend must exist            */
+    if (ptcb == (OS_TCB *)0) 								  /* Task to suspend must exist            */
+    {                                
         OS_EXIT_CRITICAL();
         return (OS_TASK_RESUME_PRIO);
     }
-    if (ptcb == (OS_TCB *)1) {                                /* See if assigned to Mutex              */
+    if (ptcb == (OS_TCB *)1) 								  /* See if assigned to Mutex              */
+    {                                
         OS_EXIT_CRITICAL();
         return (OS_TASK_NOT_EXIST);
     }
-    if ((ptcb->OSTCBStat & OS_STAT_SUSPEND) != OS_STAT_RDY) { /* Task must be suspended                */
+
+    // 待恢复的任务当前是被挂起的状态
+    if ((ptcb->OSTCBStat & OS_STAT_SUSPEND) != OS_STAT_RDY)  /* Task must be suspended                */
+    { 
+    	// 清挂起状态
         ptcb->OSTCBStat &= ~OS_STAT_SUSPEND;                  /* Remove suspension                     */
-        if (ptcb->OSTCBStat == OS_STAT_RDY) {                 /* See if task is now ready              */
-            if (ptcb->OSTCBDly == 0) {
+
+		// 如果任务被挂起前是就绪态
+        if (ptcb->OSTCBStat == OS_STAT_RDY)					  /* See if task is now ready              */
+        {                 
+            if (ptcb->OSTCBDly == 0) 
+            {
+            	// 添加到就绪表
                 OSRdyGrp               |= ptcb->OSTCBBitY;    /* Yes, Make task ready to run           */
                 OSRdyTbl[ptcb->OSTCBY] |= ptcb->OSTCBBitX;
                 OS_EXIT_CRITICAL();
+                // 找出优先级最高的任务并进行任务切换
                 OS_Sched();
-            } else {
+            } 
+            else 
+            {
                 OS_EXIT_CRITICAL();
             }
-        } else {                                              /* Must be pending on event              */
+        } 
+        else 
+        {                                              /* Must be pending on event              */
             OS_EXIT_CRITICAL();
         }
         return (OS_NO_ERR);
@@ -813,51 +938,70 @@ INT8U  OSTaskStkChk (INT8U prio, OS_STK_DATA *p_stk_data)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (prio > OS_LOWEST_PRIO) {                       /* Make sure task priority is valid             */
-        if (prio != OS_PRIO_SELF) {
+	// 检查优先级是否有效
+    if (prio > OS_LOWEST_PRIO)						   /* Make sure task priority is valid             */
+    {                       
+        if (prio != OS_PRIO_SELF) 
+        {
             return (OS_PRIO_INVALID);
         }
     }
-    if (p_stk_data == (OS_STK_DATA *)0) {              /* Validate 'p_stk_data'                        */
+    // 栈信息结构体是否为空
+    if (p_stk_data == (OS_STK_DATA *)0) 			   /* Validate 'p_stk_data'                        */
+    {             
         return (OS_ERR_PDATA_NULL);
     }
 #endif
+
     p_stk_data->OSFree = 0;                            /* Assume failure, set to 0 size                */
     p_stk_data->OSUsed = 0;
     OS_ENTER_CRITICAL();
-    if (prio == OS_PRIO_SELF) {                        /* See if check for SELF                        */
+    // 是否是任务自己检查自己的栈
+    if (prio == OS_PRIO_SELF)						   /* See if check for SELF                        */
+    {                        
         prio = OSTCBCur->OSTCBPrio;
     }
+    // 获得TCB
     ptcb = OSTCBPrioTbl[prio];
-    if (ptcb == (OS_TCB *)0) {                         /* Make sure task exist                         */
+    if (ptcb == (OS_TCB *)0) 						   /* Make sure task exist                         */
+    {                         
         OS_EXIT_CRITICAL();
         return (OS_TASK_NOT_EXIST);
     }
-    if (ptcb == (OS_TCB *)1) {
+    if (ptcb == (OS_TCB *)1) 
+    {
         OS_EXIT_CRITICAL();
         return (OS_TASK_NOT_EXIST);
     }
-    if ((ptcb->OSTCBOpt & OS_TASK_OPT_STK_CHK) == 0) { /* Make sure stack checking option is set       */
+    // 是否允许栈检查
+    if ((ptcb->OSTCBOpt & OS_TASK_OPT_STK_CHK) == 0)  /* Make sure stack checking option is set       */
+    { 
         OS_EXIT_CRITICAL();
         return (OS_TASK_OPT_ERR);
     }
     free = 0;
+    // 栈容量
     size = ptcb->OSTCBStkSize;
+	// 栈底
     pchk = ptcb->OSTCBStkBottom;
     OS_EXIT_CRITICAL();
 #if OS_STK_GROWTH == 1
-    while (*pchk++ == (OS_STK)0) {                    /* Compute the number of zero entries on the stk */
+	// 计算可用空间
+    while (*pchk++ == (OS_STK)0)						/* Compute the number of zero entries on the stk */
+    {                    
         free++;
     }
 #else
-    while (*pchk-- == (OS_STK)0) {
+    while (*pchk-- == (OS_STK)0) 
+    {
         free++;
     }
 #endif
+
+	// 可用空间
     p_stk_data->OSFree = free * sizeof(OS_STK);           /* Compute number of free bytes on the stack */
+    // 已用空间
     p_stk_data->OSUsed = (size - free) * sizeof(OS_STK);  /* Compute number of bytes used on the stack */
     return (OS_NO_ERR);
 }
@@ -887,53 +1031,75 @@ INT8U  OSTaskStkChk (INT8U prio, OS_STK_DATA *p_stk_data)
 */
 
 #if OS_TASK_SUSPEND_EN > 0
+// 无条件的挂起一个任务
 INT8U  OSTaskSuspend (INT8U prio)
 {
     BOOLEAN    self;
     OS_TCB    *ptcb;
     INT8U      y;
-#if OS_CRITICAL_METHOD == 3                      /* Allocate storage for CPU status register           */
+#if OS_CRITICAL_METHOD == 3                      				/* Allocate storage for CPU status register           */
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (prio == OS_TASK_IDLE_PRIO) {                            /* Not allowed to suspend idle task    */
+	// 不允许挂起空闲任务
+    if (prio == OS_TASK_IDLE_PRIO) 								/* Not allowed to suspend idle task    */
+    {                            
         return (OS_TASK_SUSPEND_IDLE);
     }
-    if (prio >= OS_LOWEST_PRIO) {                               /* Task priority valid ?               */
-        if (prio != OS_PRIO_SELF) {
+    // 检查优先级是否有效
+    if (prio >= OS_LOWEST_PRIO) 								/* Task priority valid ?               */
+    {                               
+        if (prio != OS_PRIO_SELF) 
+        {
             return (OS_PRIO_INVALID);
         }
     }
 #endif
+
     OS_ENTER_CRITICAL();
-    if (prio == OS_PRIO_SELF) {                                 /* See if suspend SELF                 */
+    // 是否任务自己要求挂起自己
+    if (prio == OS_PRIO_SELF) 									/* See if suspend SELF                 */
+    {                                 
         prio = OSTCBCur->OSTCBPrio;
         self = OS_TRUE;
-    } else if (prio == OSTCBCur->OSTCBPrio) {                   /* See if suspending self              */
+    }
+    else if (prio == OSTCBCur->OSTCBPrio) 						/* See if suspending self              */
+    {                   
         self = OS_TRUE;
-    } else {
+    } 
+    else 
+    {
         self = OS_FALSE;                                        /* No suspending another task          */
     }
+    
+    // 获得TCB
     ptcb = OSTCBPrioTbl[prio];
-    if (ptcb == (OS_TCB *)0) {                                  /* Task to suspend must exist          */
+    if (ptcb == (OS_TCB *)0)									/* Task to suspend must exist          */
+    {                                  
         OS_EXIT_CRITICAL();
         return (OS_TASK_SUSPEND_PRIO);
     }
-    if (ptcb == (OS_TCB *)1) {                                  /* See if assigned to Mutex            */
+    if (ptcb == (OS_TCB *)1) 									/* See if assigned to Mutex            */
+    {                                  
         OS_EXIT_CRITICAL();
         return (OS_TASK_NOT_EXIST);
     }
+    // 从就绪表中移除
     y            = ptcb->OSTCBY;
     OSRdyTbl[y] &= ~ptcb->OSTCBBitX;                            /* Make task not ready                 */
-    if (OSRdyTbl[y] == 0) {
+    if (OSRdyTbl[y] == 0) 
+    {
         OSRdyGrp &= ~ptcb->OSTCBBitY;
     }
+    // 标志挂起状态
     ptcb->OSTCBStat |= OS_STAT_SUSPEND;                         /* Status of task is 'SUSPENDED'       */
     OS_EXIT_CRITICAL();
-    if (self == OS_TRUE) {                                      /* Context switch only if SELF         */
+
+    // 如果是自己要求挂起自己
+    if (self == OS_TRUE) 										/* Context switch only if SELF         */
+    {             
+    	// 找出优先级最高的任务并进行任务切换
         OS_Sched();
     }
     return (OS_NO_ERR);
@@ -958,7 +1124,7 @@ INT8U  OSTaskSuspend (INT8U prio)
 *              OS_ERR_PDATA_NULL  if 'p_task_data' is a NULL pointer
 *********************************************************************************************************
 */
-
+// 获得有关任务的信息
 #if OS_TASK_QUERY_EN > 0
 INT8U  OSTaskQuery (INT8U prio, OS_TCB *p_task_data)
 {
@@ -967,32 +1133,43 @@ INT8U  OSTaskQuery (INT8U prio, OS_TCB *p_task_data)
     OS_CPU_SR  cpu_sr = 0;
 #endif
 
-
-
 #if OS_ARG_CHK_EN > 0
-    if (prio > OS_LOWEST_PRIO) {                 /* Task priority valid ?                              */
-        if (prio != OS_PRIO_SELF) {
+	// 不允许查询空闲任务
+    if (prio > OS_LOWEST_PRIO)  				 /* Task priority valid ?                              */
+    {                
+        if (prio != OS_PRIO_SELF) 
+        {
             return (OS_PRIO_INVALID);
         }
     }
-    if (p_task_data == (OS_TCB *)0) {            /* Validate 'p_task_data'                             */
+    // TCB有效
+    if (p_task_data == (OS_TCB *)0) 			 /* Validate 'p_task_data'                             */
+    {            
         return (OS_ERR_PDATA_NULL);
     }
 #endif
+
     OS_ENTER_CRITICAL();
-    if (prio == OS_PRIO_SELF) {                  /* See if suspend SELF                                */
+    // 任务自己要求查询自己
+    if (prio == OS_PRIO_SELF) 					 /* See if suspend SELF                                */
+    {                  
         prio = OSTCBCur->OSTCBPrio;
     }
+
+    // 获得TCB
     ptcb = OSTCBPrioTbl[prio];
-    if (ptcb == (OS_TCB *)0) {                   /* Task to query must exist                           */
+    if (ptcb == (OS_TCB *)0) 				   	 /* Task to query must exist                           */
+    {                   
         OS_EXIT_CRITICAL();
         return (OS_PRIO_ERR);
     }
-    if (ptcb == (OS_TCB *)1) {                   /* Task to query must not be assigned to a Mutex      */
+    if (ptcb == (OS_TCB *)1) 					 /* Task to query must not be assigned to a Mutex      */
+    {                   
         OS_EXIT_CRITICAL();
         return (OS_TASK_NOT_EXIST);
     }
-                                                 /* Copy TCB into user storage area                    */
+	
+    // 拷贝TCB给用户的p_task_data                /* Copy TCB into user storage area                    */
     OS_MemCopy((INT8U *)p_task_data, (INT8U *)ptcb, sizeof(OS_TCB));
     OS_EXIT_CRITICAL();
     return (OS_NO_ERR);
@@ -1021,18 +1198,23 @@ INT8U  OSTaskQuery (INT8U prio, OS_TCB *p_task_data)
 * Returns    : none
 *********************************************************************************************************
 */
+// 将栈清空
 #if OS_TASK_CREATE_EXT_EN > 0
 void  OS_TaskStkClr (OS_STK *pbos, INT32U size, INT16U opt)
 {
-    if ((opt & OS_TASK_OPT_STK_CHK) != 0x0000) {       /* See if stack checking has been enabled       */
-        if ((opt & OS_TASK_OPT_STK_CLR) != 0x0000) {   /* See if stack needs to be cleared             */
+    if ((opt & OS_TASK_OPT_STK_CHK) != 0x0000) 		   /* See if stack checking has been enabled       */
+    {       
+        if ((opt & OS_TASK_OPT_STK_CLR) != 0x0000) 	   /* See if stack needs to be cleared             */
+        {   
 #if OS_STK_GROWTH == 1
-            while (size > 0) {                         /* Stack grows from HIGH to LOW memory          */
+            while (size > 0) 						   /* Stack grows from HIGH to LOW memory          */
+            {                         
                 size--;
                 *pbos++ = (OS_STK)0;                   /* Clear from bottom of stack and up!           */
             }
 #else
-            while (size > 0) {                         /* Stack grows from LOW to HIGH memory          */
+            while (size > 0) 						   /* Stack grows from LOW to HIGH memory          */
+            {                         
                 size--;
                 *pbos-- = (OS_STK)0;                   /* Clear from bottom of stack and down          */
             }

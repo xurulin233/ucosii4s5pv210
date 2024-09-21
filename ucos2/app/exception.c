@@ -242,3 +242,42 @@ void setup_vector_base(void)
 	// Update the interrupt vector address
 	_set_interrupt_vector(vector_table_ptr);
 }
+
+
+unsigned int get_x(unsigned long x)
+{
+	int i;
+	for(i=0;i<32;i++)
+	{	
+		if(x&(1<<i))
+			return i;
+	}
+	return 0;
+}
+
+
+unsigned int get_int_vect()
+{
+	unsigned int ret = -1;
+
+	if(VIC0IRQSTATUS)
+	{
+		ret = get_x(VIC0IRQSTATUS);
+	}
+	else if(VIC1IRQSTATUS)
+	{
+		ret = get_x(VIC1IRQSTATUS)+32;
+	}
+	else if(VIC1IRQSTATUS)
+	{
+		ret = get_x(VIC2IRQSTATUS)+64;
+	}
+		else if(VIC1IRQSTATUS)
+	{
+		ret = get_x(VIC3IRQSTATUS)+96;
+	}
+
+
+	return ret;
+}
+
