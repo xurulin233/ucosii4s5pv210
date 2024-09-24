@@ -3,11 +3,13 @@
 #define _STDIO_H
 
 #include "types.h"
-
+#include "stdarg.h"
+/* _VALIST 
 #ifndef _VALIST
 #define _VALIST
 typedef char *va_list;
-#endif /* _VALIST */
+#endif 
+*/
 
 extern int vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
 extern int snprintf(char * buf, size_t size, const char *fmt, ...);

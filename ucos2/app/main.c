@@ -4,6 +4,7 @@
 #include "app_cfg.h"
 #include "exception.h"
 #include "target.h"
+#include "lcd.h"
 
 // 设置栈
 OS_STK  MainTaskStk[MainTaskStkLengh];
@@ -12,6 +13,9 @@ OS_STK	Task1Stk[Task1StkLengh];
 
 //信号量
 OS_EVENT *sem;
+
+#define		lcdtype					0x3  //屏幕型号S70
+extern unsigned char *gImage_bmp;
 
 
 int main(void)
@@ -54,6 +58,11 @@ void MainTask(void *pdata)
     // 如果要使用统计任务，则在用户的第一个任务里需调用OSStatInit函数
     OSStatInit();																				
     // 创建用户应用程序任务
+
+	//lcd
+	lcd_init(lcdtype);
+	lcd_clear_screen(0x0);
+	lcd_draw_bmp(gImage_bmp,lcdtype);
 
 	//创建信号量
 	sem = OSSemCreate(1);  
