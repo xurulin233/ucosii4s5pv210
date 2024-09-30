@@ -28,7 +28,8 @@ SOURCE := \
 		app/clock.c \
 		app/target.c \
 		app/font_libs.c \
-		app/lcd.c
+		app/lcd.c \
+		app/ugui.c
 
 objs := \
 	$(patsubst %.c, %.o, $(filter %.c, $(SOURCE))) \

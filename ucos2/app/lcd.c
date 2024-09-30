@@ -19,8 +19,8 @@ unsigned char *gImage_bmp;
 
 // ³õÊ¼»¯LCD
 void lcd_init(int lcd_type)
-{	
-	int hspw,hbpd,hfpd,vspw,vbpd,vfpd,vsync,hsync; 			
+{
+	int hspw,hbpd,hfpd,vspw,vbpd,vfpd,vsync,hsync;
 
 	// ÅäÖÃÒý½ÅÓÃÓÚLCD¹¦ÄÜ
 	GPF0CON = 0x22222222;
@@ -61,7 +61,7 @@ void lcd_init(int lcd_type)
 			gImage_bmp = gImage_480272;
 
 			gRow=272;
-			gCol=480;	
+			gCol=480;
 			gRightBotX  = gCol-1;
 			gRightBotY  = gRow-1;
 
@@ -74,7 +74,7 @@ void lcd_init(int lcd_type)
 
 			vsync = 1;
 			hsync = 1;
-			
+
 			break;
 		}
 		// n43
@@ -83,7 +83,7 @@ void lcd_init(int lcd_type)
 			gImage_bmp = gImage_480272;
 
 			gRow=272;
-			gCol=480;	
+			gCol=480;
 			gRightBotX  = gCol-1;
 			gRightBotY  = gRow-1;
 
@@ -96,7 +96,7 @@ void lcd_init(int lcd_type)
 
 			vsync = 0;
 			hsync = 0;
-			
+
 			break;
 		}
 		// s70
@@ -105,7 +105,7 @@ void lcd_init(int lcd_type)
 			gImage_bmp = gImage_800480;
 
 			gRow=480;
-			gCol=800;	
+			gCol=800;
 			gRightBotX  = gCol-1;
 			gRightBotY  = gRow-1;
 
@@ -118,7 +118,7 @@ void lcd_init(int lcd_type)
 
 			vsync = 1;
 			hsync = 1;
-			
+
 			break;
 		}
 		// A70
@@ -127,7 +127,7 @@ void lcd_init(int lcd_type)
 			gImage_bmp = gImage_800480;
 
 			gRow=480;
-			gCol=800;	
+			gCol=800;
 			gRightBotX  = gCol-1;
 			gRightBotY  = gRow-1;
 
@@ -140,7 +140,7 @@ void lcd_init(int lcd_type)
 
 			vsync = 1;
 			hsync = 1;
-			
+
 			break;
 		}
 		// W50
@@ -149,7 +149,7 @@ void lcd_init(int lcd_type)
 			gImage_bmp = gImage_800480;
 
 			gRow=480;
-			gCol=800;	
+			gCol=800;
 			gRightBotX  = gCol-1;
 			gRightBotY  = gRow-1;
 
@@ -162,7 +162,7 @@ void lcd_init(int lcd_type)
 
 			vsync = 1;
 			hsync = 1;
-			
+
 			break;
 		}
 	}
@@ -173,7 +173,7 @@ void lcd_init(int lcd_type)
 	VIDTCON1 = hbpd<<16 | hfpd<<8 | hspw<<0;
 	// ÉèÖÃ³¤¿í
 	VIDTCON2 = (gRightBotY << 11) | (gRightBotX << 0);
-	
+
 	// ÉèÖÃwindows1
 	// bit[0]:Ê¹ÄÜ
 	// bit[2~5]:24bpp
@@ -235,6 +235,85 @@ void lcd_draw_vline(int col, int row1, int row2, int color)
 		lcd_draw_pixel(i, col, color);
 
 }
+
+void lcd_draw_line(int a,int b,int c,int d,int color)
+{
+	int e,f,i,j,g,flag;//flag¿¿¿¿¿¿¿¿¿¿
+	flag=0;
+	if(c>a)
+	{
+	  e=c-a;
+	}
+	else
+	{
+	  e=a-c;
+	  flag|=0x01;
+	}
+	if(d>b)
+	{
+	 f=d-b;
+	}
+	else
+	{
+	 f=b-d;
+	 flag|=0x02;
+	}
+	if(f>e)//¿¿¿¿¿¿?1¿¿
+	{
+		g=f;
+		f=e;
+		e=g;
+		flag|=0x04;
+	}
+	j=0;
+	for(i=0;i<e+1;i++)
+	{
+       switch(flag&0x07)
+	  {
+       	case 0:lcd_draw_pixel(a+i,b+j,color); break; //¿¿¿¿¿¿¿¿¿¿?
+		case 1:lcd_draw_pixel(a-i,b+j,color); break;
+		case 2:lcd_draw_pixel(a+i,b-j,color); break;
+		case 3:lcd_draw_pixel(a-i,b-j,color); break;
+		case 4:lcd_draw_pixel(a+j,b+i,color); break;
+	    case 5:lcd_draw_pixel(a-j,b+i,color); break;
+		case 6:lcd_draw_pixel(a+j,b-i,color); break;
+		case 7:lcd_draw_pixel(a-j,b-i,color); break;
+		default:break;
+	  }
+	  if(e*(2*j+1)<2*f*(i+1))//¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿¿
+	 {
+		j++;
+	 }
+	}
+}
+
+void lcd_fill_frame(int row1, int col1,int row2, int col2, int color)
+{
+	int height,width;
+	int i,j;
+	width=row2-row1+1; 			//¿í¶È
+	height=col2-col1+1;			//¸ß¶È
+	for(i=row1;i<width;i++)
+	{
+		for(j=col1;j<height;j++)
+			lcd_draw_pixel(i, j, color);
+	}
+}
+//
+void lcd_fill_color(int x1,int y1,int x2,int y2,int color)
+{
+	int i,j;
+
+	for(i=x1;i<x2;i++)
+	{
+		for(j=y1;j<y2;j++)
+		{
+			lcd_draw_pixel(i, j, color);
+		}
+	}
+}
+
+
 
 // »®Ê®×Ö
 void lcd_draw_cross(int row, int col, int halflen, int color)
@@ -310,14 +389,14 @@ void lcd_draw_bmp(const unsigned char gImage_bmp[], int lcd_type)
 		offset = 2;
 	else
 		offset = 0;
-		
+
 	for (i = 16; i < gRow-16-offset; i++)
 		for (j = 0; j < gCol; j++)
 		{
 			blue  = *p++;
 			green = *p++;
 			red   = *p++;
-		
+
 			color = red << 16 | green << 8 | blue << 0;
 			lcd_draw_pixel(i, j, color);
 		}
@@ -331,8 +410,8 @@ void lcd_putascii(unsigned int x,unsigned int y,unsigned char ch,unsigned int c,
 {
 	unsigned short int i,j;
 	unsigned char *pZK,mask,buf;
-	
-	
+
+
 
 	pZK = &__VGA[ch*16];
 	for( i = 0 ; i < 16 ; i++ )
@@ -351,7 +430,7 @@ void lcd_putascii(unsigned int x,unsigned int y,unsigned char ch,unsigned int c,
                     lcd_draw_pixel(x+i,y+j,bk_c);
                 }
             }
-            
+
             mask = mask >> 1;
         }
 	}
@@ -385,8 +464,8 @@ void lcd_puthz(unsigned int x,unsigned int y,unsigned short int QW,unsigned int 
                 }
             }
             mask = mask >> 1;
-        } 
-        
+        }
+
 		//ÓÒ
 		mask = 0x80;
         buf = pZK[i*2 + 1];
@@ -403,7 +482,7 @@ void lcd_puthz(unsigned int x,unsigned int y,unsigned short int QW,unsigned int 
                 }
             }
             mask = mask >> 1;
-        }                 
+        }
 	}
 }
 
@@ -418,14 +497,14 @@ void lcd_printf(unsigned int x,unsigned int y,unsigned int c,unsigned int bk_c,u
     va_start(ap,fmt);
     vsprintf(__LCD_Printf_Buf,fmt,ap);
     va_end(ap);
-	 
+
     while(*pStr != 0 )
 	{
 		switch(*pStr)
 		{
 			case '\n' :
 				{
-			
+
                     break;
 				}
 
@@ -450,13 +529,13 @@ void lcd_printf(unsigned int x,unsigned int y,unsigned int c,unsigned int bk_c,u
                     break;
 				}
 		}
-		
+
 		pStr++;
-        i++;		
+        i++;
 
         if( i > 256 ) break;
 	}
-   
+
 }
 
 
