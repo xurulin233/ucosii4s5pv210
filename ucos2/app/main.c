@@ -20,6 +20,13 @@ OS_EVENT *sem;
 #define		lcdtype					0x3  //屏幕型号S70
 extern unsigned char *gImage_bmp;
 
+//消息队列
+#define QUEUE_NUM 32 // 定义信息数量
+
+static OS_EVENT * _msgQueue; //消息队列句柄
+static void * _msgQueueCache[QUEUE_NUM]; //消息队列缓存区指针数值，每个元素指向一条消息,每条消息的内存最好是全局变量
+
+
 
 /* GUI structure */
 UG_GUI gui;
@@ -110,7 +117,11 @@ void MainTask(void *pdata)
 	//lcd_draw_bmp(gImage_bmp,lcdtype);
 
 	//创建信号量
-	sem = OSSemCreate(1);
+	//sem = OSSemCreate(1);
+
+
+	//创建消息队列。 第一个参数指定消息队列缓存区的起始地址；第二个参数指定缓存区的大小，即消息的数量
+	_msgQueue = OSQCreate(&_msgQueueCache[0], QUEUE_NUM);
 
     OSTaskCreate(Task0,(void *)0, &Task0Stk[Task0StkLengh - 1], Task0Prio);
     OSTaskCreate(Task1,(void *)0, &Task1Stk[Task1StkLengh - 1], Task1Prio);
@@ -131,8 +142,64 @@ void delay1(void)
 }
 
 
+int isMsgInQueue(OS_EVENT *pevent, void *msg)
+{
+    if(pevent == NULL || msg == NULL)
+    {
+        return -1;
+    }
+
+    OS_Q *pq = NULL;
+    pq = (OS_Q *)pevent->OSEventPtr;
+
+    if(pq->OSQEntries == 0){
+        return 0;
+    }
+
+    void ** msg_q = pq->OSQOut;
+    while(msg_q != pq->OSQIn)
+    {
+        if(*msg_q == msg){
+            return 1;
+        }
+        msg_q++;
+        (msg_q == pq->OSQEnd) ? (msg_q = pq->OSQStart) : 0;
+    }
+
+    return 0;
+}
+/**
+ * @brief 发送一条消息到缓存区，去重处理
+ * @param[msg] 指向一条消息的地址，这个地址所在内存最好是全局变量
+ * @return 1表示成功, 其它失败
+ */
+int sendMsgQueue(void * msg)
+{
+    if(isMsgInQueue(_msgQueue, msg))
+    {
+        return 1;
+    }
+    return (OSQPost(_msgQueue, msg) == OS_NO_ERR);
+}
 void Task0(void *pdata)
 {
+	char msg[256];
+	unsigned int msg_num;
+	
+		while(1)
+		{
+			sprintf(msg,"hello task1 %d",msg_num);
+			if( sendMsgQueue(msg) == 1)
+			{
+				/*正常获取到一条消息*/
+				//printf("@@@ task0 send msg %s \n",msg);
+				msg_num++;
+			}
+			 OSTimeDlyHMSM (0, 0,1, 0);
+		}
+
+
+/*
 	INT8U err;
 	while (1)
 	{
@@ -146,7 +213,7 @@ void Task0(void *pdata)
 			OSSemPost(sem);
 			}
 		OSTimeDly(10);
-
+*/
 /*
 		printf("led on\r\n");
 		led1();
@@ -157,13 +224,28 @@ void Task0(void *pdata)
 	    //printf("Enter Task1\r\n");
 		//OSTaskSuspend(Task0Prio);
 	    //OSTimeDly(OS_TICKS_PER_SEC/5);
-	}
+//	}
 }
 
 
 
 void Task1(void *pdata)
 {
+	INT8U err = OS_NO_ERR;
+	char * msg = NULL;
+		while(1)
+		{
+			msg = (char *)OSQPend(_msgQueue, 0, &err);
+			if(msg != NULL && err == OS_NO_ERR)
+			{
+				/*正常获取到一条消息*/
+				printf("@@@receive msg %s\r\n",msg);
+			}
+			
+			OSTimeDlyHMSM(0, 0,1, 0);
+		}
+		
+	/*	
 	INT8U err;
 	while (1)
 	{
@@ -177,6 +259,7 @@ void Task1(void *pdata)
 			OSSemPost(sem); // 释放信号量
 		}
 		OSTimeDly(10);
+*/
 
 /*
 		printf("led off \r\n");
@@ -192,7 +275,7 @@ void Task1(void *pdata)
     //printf("OSCPUUsage = %d % \r\n",OSCPUUsage);
     //OSTimeDly(OS_TICKS_PER_SEC/200);
 
-	}
+//	}
 }
 
 
