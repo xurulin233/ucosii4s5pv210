@@ -29,6 +29,7 @@ SOURCE := \
 		app/target.c \
 		app/font_libs.c \
 		app/lcd.c \
+		app/key.c \
 		app/ugui.c
 
 objs := \

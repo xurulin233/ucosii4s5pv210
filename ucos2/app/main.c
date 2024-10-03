@@ -6,7 +6,7 @@
 #include "target.h"
 #include "lcd.h"
 #include "ugui.h"
-
+#include "key.h"
 
 
 // 设置栈
@@ -83,36 +83,38 @@ void MainTask(void *pdata)
     OSStatInit();
     // 创建用户应用程序任务
 
-	//lcd
+	//lcd init
 	lcd_init(lcdtype);
 	lcd_clear_screen(0x0);
 
-	UG_Init(&gui,(void(*)(UG_S16,UG_S16,UG_COLOR))lcd_draw_pixel,480,800);
+	//key init
+	Button_Init();
+	
+//	UG_Init(&gui,(void(*)(UG_S16,UG_S16,UG_COLOR))lcd_draw_pixel,480,800);
 
-	UG_SelectGUI(&gui);
-	printf("@@@@@ UG_Init\n");
-
+//	UG_SelectGUI(&gui);
 
 
 	/* Register hardware acceleration */
-	UG_DriverRegister( DRIVER_DRAW_LINE, (void*)lcd_draw_line );
-	UG_DriverRegister( DRIVER_FILL_FRAME, (void*)lcd_fill_frame );
-	UG_DriverEnable( DRIVER_DRAW_LINE );
-	UG_DriverEnable( DRIVER_FILL_FRAME );
+//	UG_DriverRegister( DRIVER_DRAW_LINE, (void*)lcd_draw_line );
+//	UG_DriverRegister( DRIVER_FILL_FRAME, (void*)lcd_fill_frame );
+//	UG_DriverEnable( DRIVER_DRAW_LINE );
+//	UG_DriverEnable( DRIVER_FILL_FRAME );
 
-	UG_FillFrame(0,0,200,400,C_YELLOW);
-	printf("@@@@@ UG_FillFrame C_YELLOW\n");
+//	UG_FillFrame(0,0,200,400,C_YELLOW);
+//	printf("@@@@@ UG_FillFrame C_YELLOW\n");
 	//UG_DrawCircle(200,400,90,C_LIGHT_GREEN);
 
 	/* Create Window 1 */
-	UG_WindowCreate( &window_1, obj_buff_wnd_1, MAX_OBJECTS, NULL );
-	UG_WindowSetTitleText( &window_1, "GUI" );
-	UG_WindowSetTitleTextFont( &window_1, &FONT_12X20 );
+//	UG_WindowCreate( &window_1, obj_buff_wnd_1, MAX_OBJECTS, NULL );
+//	UG_WindowSetTitleText( &window_1, "GUI" );
+//	UG_WindowSetTitleTextFont( &window_1, &FONT_12X20 );
 
-	UG_WindowShow( &window_1 );
+//	UG_WindowShow( &window_1 );
 
 
-	UG_Update();
+//UG_Update();
+
 
 	//lcd_draw_bmp(gImage_bmp,lcdtype);
 
