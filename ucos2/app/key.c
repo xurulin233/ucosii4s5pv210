@@ -1,6 +1,8 @@
 #include "exception.h"
 #include "s5pv210.h"
 #include "stdio.h"
+#include "lcd.h"
+
 
 #define 	GPH2CON 				(*(volatile unsigned long *) 0xE0200C40)
 #define 	GPH2DAT					(*(volatile unsigned long *) 0xE0200C44)
@@ -21,30 +23,34 @@
 #define		EXT_INT_2_PEND   		( *((volatile unsigned long *)0xE0200F48) )
 #define		EXT_INT_3_PEND   		( *((volatile unsigned long *)0xE0200F4C) )
 
+#define RGB(r,g,b)   				(unsigned int)( (r << 16) + (g << 8) + b )
+
 
 void isr_key(void)
 {
-
+	char key_name[256];
 
 	// 真正的isr应该做2件事情。
 	// 第一，中断处理代码，就是真正干活的代码
 	// 因为EINT16～31是共享中断，所以要在这里再次去区分具体是哪个子中断
 	if (EXT_INT_2_PEND & (1<<0))
 	{
-		printf("eint16\r\n");
+		sprintf(key_name,"key1");
 	}
 	if (EXT_INT_2_PEND & (1<<1))
 	{
-		printf("eint17\r\n");
+		sprintf(key_name,"key2");
 	}
 	if (EXT_INT_2_PEND & (1<<2))
 	{
-		printf("eint18\r\n");
+		sprintf(key_name,"key3");
 	}
 	if (EXT_INT_2_PEND & (1<<3))
 	{
-		printf("eint19\r\n");
+		sprintf(key_name,"key4");
 	}
+
+	lcd_printf(100,0 , RGB( 0xFF,0xFF,0xFF), RGB( 0x00,0x00,0x00),0,"key is %s",key_name);
 
 	// 第二，清除中断挂起
 	EXT_INT_2_PEND |= (0x0F<<0);
