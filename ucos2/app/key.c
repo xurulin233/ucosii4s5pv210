@@ -24,16 +24,31 @@
 
 void isr_key(void)
 {
-	//static int counter;
-	//Uart_Printf("NUM_EINT16_31\n");
-	printf("@@@NUM_EINT16_31\r\n");
-	//Lcd_Printf(gRow/10*3+25*3, 0, RGB( 0xFF,0xFF,0xFF), RGB( 0x00,0x00,0x00),0,"Key interrupt times:%d\n",++counter);
-	
-	// clear VIC0ADDR
-	intc_clearvectaddr();
-	
-	// clear pending bit	
-	EXT_INT_2_PEND |= 1<<0;					
+
+
+	// 真正的isr应该做2件事情。
+	// 第一，中断处理代码，就是真正干活的代码
+	// 因为EINT16～31是共享中断，所以要在这里再次去区分具体是哪个子中断
+	if (EXT_INT_2_PEND & (1<<0))
+	{
+		printf("eint16\r\n");
+	}
+	if (EXT_INT_2_PEND & (1<<1))
+	{
+		printf("eint17\r\n");
+	}
+	if (EXT_INT_2_PEND & (1<<2))
+	{
+		printf("eint18\r\n");
+	}
+	if (EXT_INT_2_PEND & (1<<3))
+	{
+		printf("eint19\r\n");
+	}
+
+	// 第二，清除中断挂起
+	EXT_INT_2_PEND |= (0x0F<<0);
+	intc_clearvectaddr();//清除ADDRESS寄存器
 }
 
 
@@ -41,13 +56,15 @@ void isr_key(void)
 int Button_Init(void)
 {
 
-	// 外部中断相关的设置
-	// 1111 = EXT_INT[16] 
-	GPH2CON |= 0xF;							
-	// 010 = Falling edge triggered
-	EXT_INT_2_CON |= 1<<1;			
-	// unmasked
-	EXT_INT_2_MASK &= ~(1<<0);
+	// 1. 外部中断对应的GPIO模式设置
+	GPH2CON |= 0xFFFF<<0;	// GPH2_0123共4个引脚设置为外部中断模式
+
+	// 2. 中断触发模式设置		
+	EXT_INT_2_CON &= ~(0xFFFF<<0);
+	EXT_INT_2_CON |= ((2<<0)|(2<<4)|(2<<8)|(2<<12));//设置为下降沿触
+
+	//中断允许
+	EXT_INT_2_MASK &= ~(0x0F<<0);
 
 	// 设置eint16中断的中断处理函数
 	intc_setvectaddr(NUM_EINT16_31,isr_key);	
