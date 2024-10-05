@@ -30,6 +30,7 @@ SOURCE := \
 		app/font_libs.c \
 		app/lcd.c \
 		app/key.c \
+		app/rtc.c \
 		app/ugui.c
 
 objs := \

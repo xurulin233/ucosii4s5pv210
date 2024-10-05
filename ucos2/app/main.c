@@ -7,7 +7,7 @@
 #include "lcd.h"
 #include "ugui.h"
 #include "key.h"
-
+#include "rtc.h"
 
 // 设置栈
 OS_STK  MainTaskStk[MainTaskStkLengh];
@@ -27,9 +27,9 @@ static OS_EVENT * _msgQueue; //消息队列句柄
 static void * _msgQueueCache[QUEUE_NUM]; //消息队列缓存区指针数值，每个元素指向一条消息,每条消息的内存最好是全局变量
 
 
-
 /* GUI structure */
 UG_GUI gui;
+date now_time;
 
 
 /* Some defines */
@@ -45,10 +45,10 @@ UG_OBJECT obj_buff_wnd_1[MAX_OBJECTS];
 int main(void)
 {
 
-	// 初始化单板，主要就是初始化时钟和串口
-	target_init();
+    // 初始化单板，主要就是初始化时钟和串口
+    target_init();
 
-	// 初始化内核，主要就是初始化所有的变量和数据结构
+    // 初始化内核，主要就是初始化所有的变量和数据结构
     OSInit();
     // 初始化tick time
     OSTimeSet(0);
@@ -89,7 +89,14 @@ void MainTask(void *pdata)
 
 	//key init
 	Button_Init();
-	
+
+	RTC_Read(&now_time);
+	printf("NOWTIME: %04x-%02x-%02x %02x:%02x:%02x\n",now_time.year,
+                                                                  now_time.month,
+                                                                  now_time.day,
+                                                                  now_time.hour,
+                                                                  now_time.mintue,
+                                                                  now_time.second);
 //	UG_Init(&gui,(void(*)(UG_S16,UG_S16,UG_COLOR))lcd_draw_pixel,480,800);
 
 //	UG_SelectGUI(&gui);
