@@ -29,7 +29,7 @@ static void * _msgQueueCache[QUEUE_NUM]; //消息队列缓存区指针数值，�
 
 /* GUI structure */
 UG_GUI gui;
-date now_time;
+rtc_time now_time;
 
 
 /* Some defines */
@@ -90,13 +90,13 @@ void MainTask(void *pdata)
 	//key init
 	Button_Init();
 
+	//rtc init
+	rtc_init();
 	RTC_Read(&now_time);
-	printf("NOWTIME: %04x-%02x-%02x %02x:%02x:%02x\n",now_time.year,
-                                                                  now_time.month,
-                                                                  now_time.day,
-                                                                  now_time.hour,
-                                                                  now_time.mintue,
-                                                                  now_time.second);
+   	printf("now time is: %d:%d:%d:%d:%d:%d:%d.\r\n",now_time.year,
+	now_time.month,now_time.date,now_time.hour,now_time.minute,
+	now_time.second,now_time.week_day);
+
 //	UG_Init(&gui,(void(*)(UG_S16,UG_S16,UG_COLOR))lcd_draw_pixel,480,800);
 
 //	UG_SelectGUI(&gui);
@@ -194,7 +194,7 @@ void Task0(void *pdata)
 {
 	char msg[256];
 	unsigned int msg_num;
-	
+
 		while(1)
 		{
 			sprintf(msg,"hello task1 %d",msg_num);
@@ -250,11 +250,11 @@ void Task1(void *pdata)
 				/*正常获取到一条消息*/
 				printf("@@@receive msg %s\r\n",msg);
 			}
-			
+
 			OSTimeDlyHMSM(0, 0,1, 0);
 		}
-		
-	/*	
+
+	/*
 	INT8U err;
 	while (1)
 	{
