@@ -1,3 +1,4 @@
+#define RGB(r,g,b)   				(unsigned int)( (r << 16) + (g << 8) + b )
 void lcd_init(int lcd_type);
 void lcd_draw_bmp(const unsigned char gImage_bmp[], int lcd_type);
 void lcd_draw_pixel(int row, int col, int color);

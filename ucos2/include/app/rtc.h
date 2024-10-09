@@ -15,6 +15,8 @@ typedef struct rtc_time
 
 void RTC_Read(rtc_time *p_date);
 void rtc_init();
+void rtc_ticktime_enable(unsigned char bdata);
+
 
 
 #endif

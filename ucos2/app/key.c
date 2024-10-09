@@ -23,7 +23,8 @@
 #define		EXT_INT_2_PEND   		( *((volatile unsigned long *)0xE0200F48) )
 #define		EXT_INT_3_PEND   		( *((volatile unsigned long *)0xE0200F4C) )
 
-#define RGB(r,g,b)   				(unsigned int)( (r << 16) + (g << 8) + b )
+
+//#define RGB(r,g,b)   				(unsigned int)( (r << 16) + (g << 8) + b )
 
 
 void isr_key(void)
@@ -65,7 +66,7 @@ int Button_Init(void)
 	// 1. 外部中断对应的GPIO模式设置
 	GPH2CON |= 0xFFFF<<0;	// GPH2_0123共4个引脚设置为外部中断模式
 
-	// 2. 中断触发模式设置		
+	// 2. 中断触发模式设置
 	EXT_INT_2_CON &= ~(0xFFFF<<0);
 	EXT_INT_2_CON |= ((2<<0)|(2<<4)|(2<<8)|(2<<12));//设置为下降沿触
 
@@ -73,10 +74,10 @@ int Button_Init(void)
 	EXT_INT_2_MASK &= ~(0x0F<<0);
 
 	// 设置eint16中断的中断处理函数
-	intc_setvectaddr(NUM_EINT16_31,isr_key);	
-	
+	intc_setvectaddr(NUM_EINT16_31,isr_key);
+
 	// 使能eint16中断
 	intc_enable(NUM_EINT16_31);
-	
+
 	return 0;
 }

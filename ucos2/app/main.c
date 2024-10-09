@@ -40,6 +40,8 @@ rtc_time now_time;
 UG_WINDOW window_1;
 UG_OBJECT obj_buff_wnd_1[MAX_OBJECTS];
 
+//rtc
+char *week_name[7]={ "SUN","MON", "TUES", "WED", "THURS","FRI", "SAT" };
 
 
 int main(void)
@@ -91,12 +93,13 @@ void MainTask(void *pdata)
 	Button_Init();
 
 	//rtc init
-	rtc_init();
+	//rtc_init();
 	RTC_Read(&now_time);
-   	printf("now time is: %d:%d:%d:%d:%d:%d:%d.\r\n",now_time.year,
-	now_time.month,now_time.date,now_time.hour,now_time.minute,
-	now_time.second,now_time.week_day);
+   //	printf("now time is: %d-%02d-%02d  %02d:%02d:%02d %s\r\n",now_time.year,
+	//now_time.month,now_time.date,now_time.hour,now_time.minute,
+	//now_time.second,week_name[now_time.week_day - 1]);
 
+	rtc_ticktime_enable(1);
 //	UG_Init(&gui,(void(*)(UG_S16,UG_S16,UG_COLOR))lcd_draw_pixel,480,800);
 
 //	UG_SelectGUI(&gui);
