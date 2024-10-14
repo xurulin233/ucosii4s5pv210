@@ -102,11 +102,14 @@ void MainTask(void *pdata)
 
 	//iic
 	i2c0_init();
-	unsigned char read_buf;
-    at24cxx_write(5, 55);
-	read_buf = at24cxx_read(5);
-	printf("%d ",read_buf);
-	printf("\r\n");
+	unsigned char dat[256] = "xurulin hello";	 //发送数据域
+	unsigned char rev[256] = {0};	 //接收数据域
+	i2c0_write(0, dat, 16);  // 从第0页发送数据
+	printf("--------------------------\r\n");
+	i2c0_read(0, rev, 16);  // 从第0页读数据
+	printf("%s\r\n", rev);	  // 打印数据
+
+
 //	UG_Init(&gui,(void(*)(UG_S16,UG_S16,UG_COLOR))lcd_draw_pixel,480,800);
 
 //	UG_SelectGUI(&gui);

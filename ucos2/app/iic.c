@@ -15,18 +15,23 @@
 
 
 
-#define I2C_WM     1               /*Tx Mode*/
-#define I2C_RM     2			   /*Rx Mode*/
+#define WRITE    1     /*Tx Mode*/
+#define READ     2		/*Rx Mode*/
 
 typedef struct I2C
 {
-	unsigned char *Data;         /*数据缓冲区*/
-	volatile int DataCount;		/*数据长度*/
-	volatile int Mode;				/*读/写*/
+
+	volatile int mode;				/*读/写*/
 	volatile int pt;				/*缓冲区的位置*/
+	unsigned char *data;         /*数据缓冲区*/
+	volatile int datacount;		/*数据长度*/
+	char data_addr;          //读写位置（相对于AT24C08）
+	volatile int w_addr;              //写读写位置的标志
 }t210_I2C;
 
-static t210_I2C   my_t210_I2C;
+static t210_I2C   my_t210_i2C;
+
+
 
 static void delay( unsigned int time)
 {
@@ -43,21 +48,24 @@ static void delay( unsigned int time)
 */
 void i2c0_write(unsigned char slvAddr,unsigned char *buf,int len)
 {
-		my_t210_I2C.Data = buf;
-		my_t210_I2C.DataCount = len;
-		my_t210_I2C.Mode = I2C_WM;
-		my_t210_I2C.pt = 0;
+		my_t210_i2C.mode = WRITE;
+		my_t210_i2C.pt = 0;
+		my_t210_i2C.data = buf;
+		my_t210_i2C.datacount = len;
+		my_t210_i2C.w_addr = 0;
+		my_t210_i2C.data_addr = slvAddr;
+
+		I2CSTAT0 = 0xd0;
 
 		/*write slave address to I2CDS*/
-		I2CDS0 = slvAddr;
+		I2CDS0 = 0xa0;
 		/*write 0xf0 to I2CSTAT*/
 		I2CSTAT0 = 0xf0;
-		/*the data of the I2CDS is transmitted*/
-	   I2CCON0 &= ~(1<<4);
 
+		I2CCON0 &= ~(1<<4);
 
-		while(my_t210_I2C.DataCount != -1)
-			;
+		/* 等待ACK应答 */
+		while(I2CSTAT0 & 0x20);
 }
 
 
@@ -67,21 +75,27 @@ void i2c0_write(unsigned char slvAddr,unsigned char *buf,int len)
 */
 void i2c0_read(unsigned char slvAddr,unsigned char *buf,int len)
 {
-	my_t210_I2C.Data = buf;
-	my_t210_I2C.DataCount = len;
-	my_t210_I2C.Mode = I2C_RM;
-	my_t210_I2C.pt = -1;                    /*表示第一个中断不接受数据，为地址数据*/
+	my_t210_i2C.mode = READ;
+	my_t210_i2C.pt = -1;   /*表示第一个中断不接受数据，为地址数据*/
+	my_t210_i2C.data = buf;
+	my_t210_i2C.datacount = len-1;
+	my_t210_i2C.w_addr = 0;
+	my_t210_i2C.data_addr = slvAddr;
 
+	I2CSTAT0 = 0xd0;
 
 	/*write slave address to I2CDS*/
-	I2CDS0 = slvAddr;
+	I2CDS0 = 0xa0;
 	/*write 0xb0 to I2CSTAT*/
-	I2CSTAT0 = 0xb0;
+	I2CSTAT0 = 0xf0;
 
-    I2CCON0 &= ~(1<<4);
 
-	while(my_t210_I2C.DataCount !=0)
-		;
+	while(I2CSTAT0 & 0x20);
+			// 写入器件的地址（读操作）
+		I2CDS0 = 0xa1;
+			// s信号
+		I2CSTAT0 = 0xb0;
+		while (I2CSTAT0 & 0x20);
 
 }
 
@@ -93,47 +107,66 @@ void isr_i2c0()
 
 	unsigned int i;
 
-	switch(my_t210_I2C.Mode)
+	switch(my_t210_i2C.mode)
 	{
-		case I2C_WM :							//写中断
+		case WRITE :							//写中断
 			{
-				/*stop?*/
-				/*Y*/
-				if((my_t210_I2C.DataCount--) == 0)
+				if (my_t210_i2C.w_addr == 0)
+				{
+					I2CDS0 = my_t210_i2C.data_addr;  // 1.先发送要写数据的位置
+					delay(10000);
+					I2CCON0 = 0xaf;
+					my_t210_i2C.w_addr++;
+					break;
+				}
+				if((my_t210_i2C.datacount--) == 0)
 					{
 						/*Write 0xD0 (M/T Stop) to I2CSTAT.*/
 						I2CSTAT0 = 0xd0;
 						/*Clear pending bit .*/
 						I2CCON0 = 0xaf;
-
 						/*Wait until the stop condition takes effect.*/
 						delay(10000);
 						break;
 					}
 				/*N*/
-				else
-					{
 						/*Write new data transmitted to I2CDS.*/
-						I2CDS0 = my_t210_I2C.Data[my_t210_I2C.pt++];
+						I2CDS0 = my_t210_i2C.data[my_t210_i2C.pt++];
 
 						/*Clear pending bit to resume.*/
 						/*The data of the I2CDS is shifted to SDA.*/
-						for(i=0;i<10;i++)
-							;
+						delay(10000);
 						I2CCON0 = 0xaf;
-
 						break;
-					}
 			}
 
-		case I2C_RM :                           /*读中断*/
+		case READ :                           /*读中断*/
 			{
 				/*判断符号应为==*/
 
-				if(my_t210_I2C.pt == -1)	           /*第一次不接受中断*/
+				if (my_t210_i2C.w_addr == 0)		   // 1.先发送要读取数据的位置
+				{
+					I2CDS0 = my_t210_i2C.data_addr;
+					delay(1000);
+					I2CCON0 = 0xaf;
+					my_t210_i2C.w_addr++;
+					break;
+				}
+
+
+				if (my_t210_i2C.w_addr == 1)           // 2.当位置发送完毕之后
+				{                              //   发送P信号停止传输
+					I2CSTAT0 = 0xd0;
+					I2CCON0  = 0xaf;
+					delay(1000);
+					my_t210_i2C.w_addr++;
+					break;
+				}
+
+				if(my_t210_i2C.pt == -1)	           /*第一次不接受中断*/
 					{
-						my_t210_I2C.pt = 0;
-						if(my_t210_I2C.DataCount ==1)
+						my_t210_i2C.pt = 0;
+						if(my_t210_i2C.datacount ==0)
 							I2CCON0 = 0x2f;                  /*由at24cxx手册知道，读数据时，最后一个数据不需要ACK*/
 						else
 							I2CCON0 = 0xaf;
@@ -141,35 +174,26 @@ void isr_i2c0()
 					}
 
 				/*Read a new data from I2CDS.*/
-				my_t210_I2C.Data[my_t210_I2C.pt++] = I2CDS0;
-				my_t210_I2C.DataCount --;
-
-				if(my_t210_I2C.DataCount ==0)
-					{
-						/*Write 0x90 (M/R Stop) to I2CSTAT.*/
-						I2CSTAT0 = 0x90;
-						/*Clear pending bit .*/
-						I2CCON0 = 0xaf;
-
-						/*Wait until the stop condition takes effect.*/
-						delay(10000);
-						break;
-					}
-				else
-					{
-						/*Clear pending bit to resume.*/
-						if(my_t210_I2C.DataCount ==1)
-							I2CCON0 = 0x2f;                  /*由at24cxx手册知道，读数据时，最后一个数据不需要ACK*/
-						else
-							I2CCON0 = 0xaf;
-					}
+				if ((my_t210_i2C.datacount--) == 0)
+				{
+					my_t210_i2C.data[my_t210_i2C.pt++] = I2CDS0; // 5.接收最后一个数据
+					I2CSTAT0 = 0x90;            // 发送P信号
+					I2CCON0 = 0xaf;
+					delay(1000);
 					break;
+				}
+				my_t210_i2C.data[my_t210_i2C.pt++] = I2CDS0;  // 4.接收数据
+				if (my_t210_i2C.datacount == 0)
+				  I2CCON0 = 0x2f;
+				else
+				  I2CCON0 = 0xaf;
+				break;
 			}
 		default:
 			break;
 	}
 	/*清除中断*/
-	I2CCON0 &= ~(1<<4);
+	//I2CCON0 &= ~(1<<4);
 
 	/*清除中断函数地址*/
 	intc_clearvectaddr();//清除ADDRESS寄存器
@@ -192,6 +216,11 @@ void i2c0_init()
 	/*I2CSTAT配置,串行输出使能*/
 	I2CSTAT0 = 0x10;
 
+
+	// IIC 中断清除
+	I2CCON0 &= ~(1<<4);
+
+
 	// 设置iic中断的中断处理函数
 	intc_setvectaddr(NUM_I2C,isr_i2c0);
 
@@ -201,6 +230,7 @@ void i2c0_init()
 
 
 /* 需要根据AT24Cxx芯片手册的读字节协议 */
+/*
 unsigned char at24cxx_read(unsigned char address)
 {
 	unsigned char val;
@@ -209,7 +239,10 @@ unsigned char at24cxx_read(unsigned char address)
 	return val;
 }
 
+*/
+
 /* 需要根据AT24Cxx芯片手册的写字节协议 */
+/*
 void at24cxx_write(unsigned char address, unsigned char data)
 {
 	unsigned char val[2];
@@ -217,4 +250,4 @@ void at24cxx_write(unsigned char address, unsigned char data)
 	val[1] = data;
 	i2c0_write(0xA0, val, 2);
 }
-
+*/
