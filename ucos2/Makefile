@@ -31,6 +31,7 @@ SOURCE := \
 		app/lcd.c \
 		app/key.c \
 		app/rtc.c \
+		app/iic.c \
 		app/ugui.c
 
 objs := \
@@ -47,7 +48,7 @@ $(EXECUTABLE): $(objs)
 .PHONY : lib/libc.a
 lib/libc.a:
 	cd lib; make; cd ..
-	
+
 %.o:%.c
 	${CC} $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
@@ -56,4 +57,4 @@ lib/libc.a:
 
 clean:
 	make  clean -C lib
-	rm -rf *.bin *.elf *.dis  *~  $(objs) 
+	rm -rf *.bin *.elf *.dis  *~  $(objs)

@@ -98,11 +98,19 @@ void MainTask(void *pdata)
    //	printf("now time is: %d-%02d-%02d  %02d:%02d:%02d %s\r\n",now_time.year,
 	//now_time.month,now_time.date,now_time.hour,now_time.minute,
 	//now_time.second,week_name[now_time.week_day - 1]);
-
 	rtc_ticktime_enable(1);
+
+	//iic
+	i2c0_init();
+	unsigned char read_buf;
+    at24cxx_write(5, 55);
+	read_buf = at24cxx_read(5);
+	printf("%d ",read_buf);
+	printf("\r\n");
 //	UG_Init(&gui,(void(*)(UG_S16,UG_S16,UG_COLOR))lcd_draw_pixel,480,800);
 
 //	UG_SelectGUI(&gui);
+
 
 
 	/* Register hardware acceleration */
