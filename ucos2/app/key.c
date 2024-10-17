@@ -51,7 +51,7 @@ void isr_key(void)
 		sprintf(key_name,"key4");
 	}
 
-	lcd_printf(100,0 , RGB( 0xFF,0xFF,0xFF), RGB( 0x00,0x00,0x00),0,"key is %s",key_name);
+	lcd_printf(24,0 , RGB( 0xFF,0xFF,0xFF), RGB( 0x00,0x00,0x00),0,"key is %s",key_name);
 
 	// 第二，清除中断挂起
 	EXT_INT_2_PEND |= (0x0F<<0);
