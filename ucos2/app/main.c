@@ -8,6 +8,8 @@
 #include "ugui.h"
 #include "key.h"
 #include "rtc.h"
+//#include "nand.h"
+
 
 // 设置栈
 OS_STK  MainTaskStk[MainTaskStkLengh];
@@ -110,6 +112,28 @@ void MainTask(void *pdata)
 	printf("%s\r\n", rev);	  // 打印数据
 
 
+	//nandflash
+	unsigned char buf[5];
+	unsigned char data_buf[2048];
+	nand_init();
+	nand_read_id(buf);
+	printf("Maker  Code 0x%x\r\n",buf[0]);
+	printf("Device Code 0x%x\r\n",buf[1]);
+	printf("3rd    Code θx%x\r\n",buf[2]);
+	printf("4th    Code 0x%x\r\n",buf[3]);
+
+	printf("Page   Size %dKB\r\n", (1 <<  ((buf[3] >>  0) & (0x03)) ) );
+	printf("Block  Size %dKB\r\n", (64 << ((buf[3] >>  4) & (0x03)) ) );
+
+	printf("5th    Code 0x%x\r\n",buf[4]);
+	nand_read_page(0,data_buf);
+	int i;
+	for(i=0;i<2048;i++)
+	{
+		printf("%02x",data_buf[i]);
+		if(i%16 == 0)
+		printf("\r\n");
+	}
 //	UG_Init(&gui,(void(*)(UG_S16,UG_S16,UG_COLOR))lcd_draw_pixel,480,800);
 
 //	UG_SelectGUI(&gui);

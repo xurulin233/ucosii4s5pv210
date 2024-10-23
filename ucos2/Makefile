@@ -32,6 +32,7 @@ SOURCE := \
 		app/key.c \
 		app/rtc.c \
 		app/iic.c \
+		app/nand.c \
 		app/ugui.c
 
 objs := \
