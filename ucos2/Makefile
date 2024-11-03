@@ -33,6 +33,8 @@ SOURCE := \
 		app/rtc.c \
 		app/iic.c \
 		app/nand.c \
+		app/delay.c \
+		app/sdio_sdcard.c \
 		app/ugui.c
 
 objs := \

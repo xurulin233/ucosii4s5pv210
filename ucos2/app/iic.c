@@ -2,7 +2,7 @@
 /* GPIO */
 #include "exception.h"
 #include "stdio.h"
-
+#include "delay.h"
 
 
 #define GPD1CON  (*(volatile unsigned long*) 0xe02000c0)
@@ -30,15 +30,6 @@ typedef struct I2C
 }t210_I2C;
 
 static t210_I2C   my_t210_i2C;
-
-
-
-static void delay( unsigned int time)
-{
-	volatile unsigned int i = time;		// volatile 让编译器不要优化，这样才能真正的减
-	while (i--);							// 才能消耗时间，实现delay
-}
-
 
 
 

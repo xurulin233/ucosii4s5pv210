@@ -9,6 +9,9 @@
 #include "key.h"
 #include "rtc.h"
 //#include "nand.h"
+#include "delay.h"
+#include "sdio_sdcard.h"
+
 
 
 // 设置栈
@@ -134,6 +137,29 @@ void MainTask(void *pdata)
 		if(i%16 == 0)
 		printf("\r\n");
 	}
+
+	//SD卡
+	char write_buffer[] = "hello SD Card test....";
+	char read_buffer[2048] = {0};
+	printf("\r\nSD Card test..\r\n");
+	sd_init();
+
+	//擦除命令无效
+	//写失败
+	//读取成功
+	int start_block = 500;
+	int end_block = 510;
+	int ret;
+	printf("erase SD card, blocks: [%d, %d]...\r\n", start_block, end_block);
+	sd_erase_block(start_block, end_block);
+	printf("write SD card, start block: %d\r\n", start_block);
+	ret = sd_write_block(write_buffer, start_block, 1);
+	printf("write ret: %d\r\n", ret);
+	printf("read SD card, block: \r\n", start_block);
+	sd_read_block(read_buffer, start_block, 1);
+	printf("read data: %s\r\n", read_buffer);
+
+
 //	UG_Init(&gui,(void(*)(UG_S16,UG_S16,UG_COLOR))lcd_draw_pixel,480,800);
 
 //	UG_SelectGUI(&gui);
@@ -182,11 +208,6 @@ void MainTask(void *pdata)
 }
 
 
-void delay1(void)
-{
-	volatile unsigned int i = 9000000;		// volatile 让编译器不要优化，这样才能真正的减
-	while (i--);							// 才能消耗时间，实现delay
-}
 
 
 int isMsgInQueue(OS_EVENT *pevent, void *msg)
@@ -255,7 +276,7 @@ void Task0(void *pdata)
 		if (err == OS_NO_ERR) {
 			printf("led on\r\n");
 			led1();
-			delay1();
+			delay(900000);
 			printf("led onn\r\n");
 			OSSemPost(sem);
 			}
@@ -264,7 +285,7 @@ void Task0(void *pdata)
 /*
 		printf("led on\r\n");
 		led1();
-		delay1();
+		delay(900000);
 		printf("led on\r\n");
 */
 
